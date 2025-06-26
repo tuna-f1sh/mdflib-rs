@@ -8,6 +8,8 @@ repository = "https://github.com/tuna-f1sh/mdflib-rs"
 documentation = "https://docs.rs/mdflib-sys"
 keywords = ["mdf", "automotive", "data", "ffi"]
 categories = ["external-ffi-bindings", "automotive"]
+readme = "README.md"
+build = "build.rs"
 
 [features]
 default = ["bundled"]
@@ -18,8 +20,8 @@ system = []
 
 [build-dependencies]
 bindgen = { workspace = true }
-cc = { workspace = true }
 pkg-config = { workspace = true }
+cc = { workspace = true }
 
 [package.metadata.docs.rs]
 features = ["bundled"]

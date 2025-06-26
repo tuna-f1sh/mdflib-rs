@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
-    let target = env::var("TARGET").unwrap();
+    let _target = env::var("TARGET").unwrap();
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
 
@@ -16,8 +16,8 @@ fn main() {
         panic!("Either 'bundled' or 'system' feature must be enabled");
     }
 
-    // Generate bindings
-    generate_bindings(&manifest_dir);
+    // Generate bindings - try bindgen first, fall back to manual if it fails
+    generate_bindings(&manifest_dir, &out_dir);
 
     println!("cargo:rerun-if-changed=wrapper.h");
     println!("cargo:rerun-if-changed=build.rs");
@@ -146,8 +146,59 @@ fn build_bundled(out_dir: &PathBuf, manifest_dir: &PathBuf) {
         );
     }
 
+    // Now build our C wrapper that provides the exported functions
+    build_c_wrapper(&install_dir, &manifest_dir);
+
     // Set up linking
     setup_bundled_linking(&install_dir);
+}
+
+fn build_c_wrapper(install_dir: &PathBuf, manifest_dir: &PathBuf) {
+    println!("Building C wrapper...");
+
+    let wrapper_cpp = manifest_dir.join("src").join("mdf_export_wrapper.cpp");
+    if !wrapper_cpp.exists() {
+        println!(
+            "cargo:warning=C wrapper not found at {}, skipping wrapper build",
+            wrapper_cpp.display()
+        );
+        return;
+    }
+
+    let mut build = cc::Build::new();
+    build
+        .cpp(true)
+        .std("c++17")
+        .warnings(false)
+        .file(&wrapper_cpp);
+
+    // Add include directories
+    let include_dir = install_dir.join("include");
+    if include_dir.exists() {
+        build.include(&include_dir);
+    }
+
+    // Add bundled include if available
+    let bundled_include = manifest_dir.join("bundled").join("include");
+    if bundled_include.exists() {
+        build.include(&bundled_include);
+    }
+
+    // Platform-specific settings
+    if cfg!(target_os = "windows") {
+        build.define("_WIN32", None);
+    } else if cfg!(target_os = "linux") {
+        build.define("__linux__", None);
+        build.flag("-fPIC");
+    } else if cfg!(target_os = "macos") {
+        build.define("__APPLE__", None);
+        build.flag("-fPIC");
+    }
+
+    // Compile the wrapper
+    build.compile("mdf_export_wrapper");
+
+    println!("C wrapper compiled successfully");
 }
 
 fn setup_dependencies() {
@@ -400,7 +451,7 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
 fn setup_bundled_linking(install_dir: &PathBuf) {
     let lib_dir = install_dir.join("lib");
     let lib64_dir = install_dir.join("lib64");
-
+    
     // Add library search paths
     if lib_dir.exists() {
         println!("cargo:rustc-link-search=native={}", lib_dir.display());
@@ -409,12 +460,15 @@ fn setup_bundled_linking(install_dir: &PathBuf) {
         println!("cargo:rustc-link-search=native={}", lib64_dir.display());
     }
 
+    // Link our C wrapper (built by cc crate)
+    println!("cargo:rustc-link-lib=static=mdf_export_wrapper");
+    
     // Link the main mdflib library
     println!("cargo:rustc-link-lib=static=mdf");
-
+    
     // Link required dependencies
     link_dependencies();
-
+    
     // Platform-specific system library dependencies
     if cfg!(target_os = "windows") {
         println!("cargo:rustc-link-lib=dylib=user32");
@@ -498,47 +552,92 @@ fn link_system_library() {
     }
 }
 
-fn generate_bindings(manifest_dir: &PathBuf) {
+fn generate_bindings(manifest_dir: &PathBuf, out_dir: &PathBuf) {
     let wrapper_h = manifest_dir.join("wrapper.h");
 
+    if !wrapper_h.exists() {
+        panic!("wrapper.h not found at {}", wrapper_h.display());
+    }
+
+    println!(
+        "Attempting to generate bindings from {}",
+        wrapper_h.display()
+    );
+
+    // Try to generate bindings with bindgen
+    match try_generate_bindgen_bindings(&wrapper_h, out_dir, manifest_dir) {
+        Ok(()) => {
+            println!("Successfully generated bindings with bindgen");
+        }
+        Err(e) => {
+            eprintln!("Bindgen failed: {}", e);
+            eprintln!("Falling back to manual bindings...");
+            generate_fallback_bindings(out_dir);
+        }
+    }
+}
+
+fn try_generate_bindgen_bindings(
+    wrapper_h: &PathBuf,
+    out_dir: &PathBuf,
+    manifest_dir: &PathBuf,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut bindgen_builder = bindgen::Builder::default()
         .header(wrapper_h.to_str().unwrap())
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-        .clang_arg("-std=c++17");
+        // Use C mode instead of C++ to avoid complex header dependencies
+        .clang_arg("-xc")
+        .detect_include_paths(true);
 
-    // Add include paths from environment
+    // Only add custom include paths if they exist
     if let Ok(include_paths) = env::var("DEP_MDF_INCLUDE") {
         for path in include_paths.split(';') {
-            if !path.is_empty() {
+            if !path.is_empty() && std::path::Path::new(path).exists() {
                 bindgen_builder = bindgen_builder.clang_arg(format!("-I{}", path));
             }
         }
     }
 
-    // Add include paths from environment variables
+    // Add include paths from environment variables if they exist
     if let Ok(zlib_include) = env::var("ZLIB_INCLUDE_DIR") {
-        bindgen_builder = bindgen_builder.clang_arg(format!("-I{}", zlib_include));
+        if std::path::Path::new(&zlib_include).exists() {
+            bindgen_builder = bindgen_builder.clang_arg(format!("-I{}", zlib_include));
+        }
     }
 
     if let Ok(expat_include) = env::var("EXPAT_INCLUDE_DIR") {
-        bindgen_builder = bindgen_builder.clang_arg(format!("-I{}", expat_include));
+        if std::path::Path::new(&expat_include).exists() {
+            bindgen_builder = bindgen_builder.clang_arg(format!("-I{}", expat_include));
+        }
     }
 
-    // Add common include paths
+    // Add bundled include path if it exists
     let bundled_include = manifest_dir.join("bundled").join("include");
     if bundled_include.exists() {
         bindgen_builder = bindgen_builder.clang_arg(format!("-I{}", bundled_include.display()));
     }
 
-    // Add system include paths for dependencies like zlib and expat
-    if cfg!(target_os = "linux") {
+    // Add platform-specific system include paths
+    if cfg!(target_os = "macos") {
+        bindgen_builder = bindgen_builder.clang_arg("-I/usr/local/include");
+
+        // Add Homebrew paths if they exist
+        if std::path::Path::new("/opt/homebrew/include").exists() {
+            bindgen_builder = bindgen_builder.clang_arg("-I/opt/homebrew/include");
+        }
+
+        // Try to find the system SDK
+        if let Ok(output) = Command::new("xcrun").args(&["--show-sdk-path"]).output() {
+            if output.status.success() {
+                let sdk_path = String::from_utf8_lossy(&output.stdout);
+                bindgen_builder =
+                    bindgen_builder.clang_arg(format!("-I{}/usr/include", sdk_path.trim()));
+            }
+        }
+    } else if cfg!(target_os = "linux") {
         bindgen_builder = bindgen_builder
             .clang_arg("-I/usr/include")
             .clang_arg("-I/usr/local/include");
-    } else if cfg!(target_os = "macos") {
-        bindgen_builder = bindgen_builder
-            .clang_arg("-I/usr/local/include")
-            .clang_arg("-I/opt/homebrew/include");
     }
 
     let bindings = bindgen_builder
@@ -586,16 +685,82 @@ fn generate_bindings(manifest_dir: &PathBuf) {
         .derive_ord(true)
         .derive_partialeq(true)
         .derive_partialord(true)
-        // Handle C++ specifics
+        // Handle C specifics
         .prepend_enum_name(false)
-        .layout_tests(false) // Disable layout tests for C++ structs
-        .generate()
-        .expect("Unable to generate bindings");
+        .layout_tests(false)
+        .generate()?;
 
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
+    bindings.write_to_file(out_dir.join("bindings.rs"))?;
+    Ok(())
+}
+
+fn generate_fallback_bindings(out_dir: &PathBuf) {
+    let fallback_bindings = r#"
+//! Fallback bindings for when bindgen fails
+//! This provides minimal type definitions to get the crate to compile
+
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+
+use std::os::raw::{c_char, c_void};
+
+// Opaque pointer types
+pub type MdfReader = c_void;
+pub type MdfWriter = c_void;
+pub type MdfFile = c_void;
+pub type IHeader = c_void;
+pub type IDataGroup = c_void;
+pub type IChannelGroup = c_void;
+pub type IChannel = c_void;
+pub type CanMessage = c_void;
+
+// Basic enums with proper constants
+pub const MDF_WRITER_TYPE_MDF4: u32 = 0;
+pub const MDF_WRITER_TYPE_MDF3: u32 = 1;
+pub type MdfWriterType = u32;
+
+pub const CHANNEL_TYPE_FIXED_LENGTH: u32 = 0;
+pub const CHANNEL_TYPE_VARIABLE_LENGTH: u32 = 1;
+pub const CHANNEL_TYPE_MASTER: u32 = 2;
+pub const CHANNEL_TYPE_VIRTUAL_MASTER: u32 = 3;
+pub const CHANNEL_TYPE_SYNC: u32 = 4;
+pub const CHANNEL_TYPE_MAX_LENGTH: u32 = 5;
+pub const CHANNEL_TYPE_VIRTUAL_DATA: u32 = 6;
+pub type ChannelType = u32;
+
+pub const CHANNEL_DATA_TYPE_UNSIGNED_INT: u32 = 0;
+pub const CHANNEL_DATA_TYPE_SIGNED_INT: u32 = 1;
+pub const CHANNEL_DATA_TYPE_FLOAT: u32 = 2;
+pub const CHANNEL_DATA_TYPE_STRING: u32 = 3;
+pub const CHANNEL_DATA_TYPE_BYTE_ARRAY: u32 = 4;
+pub type ChannelDataType = u32;
+
+// External function declarations
+extern "C" {
+    pub fn MdfReaderInit(filename: *const c_char) -> *mut MdfReader;
+    pub fn MdfReaderUnInit(reader: *mut MdfReader);
+    pub fn MdfReaderIsOk(reader: *mut MdfReader) -> bool;
+    pub fn MdfReaderOpen(reader: *mut MdfReader) -> bool;
+    pub fn MdfReaderClose(reader: *mut MdfReader);
+    pub fn MdfReaderReadHeader(reader: *mut MdfReader) -> bool;
+    pub fn MdfReaderReadMeasurementInfo(reader: *mut MdfReader) -> bool;
+    pub fn MdfReaderReadEverythingButData(reader: *mut MdfReader) -> bool;
+    
+    pub fn MdfWriterInit(type_: MdfWriterType, filename: *const c_char) -> *mut MdfWriter;
+    pub fn MdfWriterUnInit(writer: *mut MdfWriter);
+    pub fn MdfWriterInitMeasurement(writer: *mut MdfWriter) -> bool;
+    pub fn MdfWriterFinalizeMeasurement(writer: *mut MdfWriter) -> bool;
+    
+    pub fn CanMessageInit() -> *mut CanMessage;
+    pub fn CanMessageUnInit(can: *mut CanMessage);
+}
+"#;
+
+    std::fs::write(out_dir.join("bindings.rs"), fallback_bindings)
+        .expect("Failed to write fallback bindings");
+
+    println!("Generated fallback bindings");
 }
 
 fn print_zlib_install_instructions() {

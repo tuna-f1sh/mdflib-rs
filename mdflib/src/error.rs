@@ -17,11 +17,29 @@ pub enum MdfError {
     #[error("Failed to read data")]
     DataRead,
     
+    #[error("Failed to initialize measurement")]
+    MeasurementInit,
+    
+    #[error("Failed to finalize measurement")]
+    MeasurementFinalize,
+    
     #[error("Invalid file format")]
     InvalidFormat,
     
     #[error("Null pointer encountered")]
     NullPointer,
+    
+    #[error("Index out of bounds: {0}")]
+    IndexOutOfBounds(usize),
+    
+    #[error("Invalid channel type: {0}")]
+    InvalidChannelType(u8),
+    
+    #[error("Invalid data type: {0}")]
+    InvalidDataType(u8),
+    
+    #[error("Buffer too small: needed {needed}, got {actual}")]
+    BufferTooSmall { needed: usize, actual: usize },
     
     #[error("UTF-8 conversion error: {0}")]
     Utf8Error(#[from] std::str::Utf8Error),
@@ -34,4 +52,4 @@ pub enum MdfError {
 }
 
 /// Result type for mdflib operations
-pub type Result<T> = std::result::Result<T, MdfError>
+pub type Result<T> = std::result::Result<T, MdfError>;
