@@ -1,0 +1,3 @@
+[submodule "mdflib-sys/bundled"]
+	path = mdflib-sys/bundled
+	url = https://github.com/ihedvall/mdflib

@@ -1,0 +1,8 @@
+[workspace]
+members = ["mdflib-sys", "mdflib"]
+resolver = "2"
+
+[workspace.dependencies]
+bindgen = "0.70"
+cc = "1.0"
+pkg-config = "0.3"

@@ -1,0 +1,25 @@
+[package]
+name = "mdflib-sys"
+version = "0.1.0"
+edition = "2021"
+description = "Low-level FFI bindings for mdflib"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tuna-f1sh/mdflib-rs"
+documentation = "https://docs.rs/mdflib-sys"
+keywords = ["mdf", "automotive", "data", "ffi"]
+categories = ["external-ffi-bindings", "automotive"]
+
+[features]
+default = ["bundled"]
+bundled = []
+system = []
+
+[dependencies]
+
+[build-dependencies]
+bindgen = { workspace = true }
+cc = { workspace = true }
+pkg-config = { workspace = true }
+
+[package.metadata.docs.rs]
+features = ["bundled"]

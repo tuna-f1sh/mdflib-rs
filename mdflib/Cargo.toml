@@ -1,0 +1,22 @@
+[package]
+name = "mdflib"
+version = "0.1.0"
+edition = "2021"
+description = "Safe Rust bindings for mdflib"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tuna-f1sh/mdflib-rs"
+documentation = "https://docs.rs/mdflib"
+keywords = ["mdf", "automotive", "data"]
+categories = ["api-bindings", "automotive"]
+
+[features]
+default = ["bundled"]
+bundled = ["mdflib-sys/bundled"]
+system = ["mdflib-sys/system"]
+
+[dependencies]
+mdflib-sys = { path = "../mdflib-sys", version = "0.1.0" }
+thiserror = "1.0"
+
+[dev-dependencies]
+tempfile = "3.0"
