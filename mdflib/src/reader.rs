@@ -1,16 +1,13 @@
 //! MDF file reader implementation
 
-use crate::data_group::DataGroup;
 use crate::error::{MdfError, Result};
-use crate::file::MdfFile;
 use mdflib_sys::*;
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::path::Path;
-use std::ptr;
 
 /// Safe wrapper around mdflib's MdfReader
 pub struct MdfReader {
-    inner: *mut mdflib_sys::MdfReader,
+    inner: *mut mdflib_sys::mdf_MdfReader,
 }
 
 impl MdfReader {
@@ -23,7 +20,7 @@ impl MdfReader {
         let c_path = CString::new(path_str)?;
 
         unsafe {
-            let reader = MdfReaderInit(c_path.as_ptr());
+            let reader = mdflib_sys::mdf_MdfReader::MdfReaderInit(c_path.as_ptr());
             if reader.is_null() {
                 return Err(MdfError::FileOpen(path_str.to_string()));
             }
@@ -35,11 +32,6 @@ impl MdfReader {
     /// Check if the reader is in a valid state
     pub fn is_ok(&self) -> bool {
         unsafe { MdfReaderIsOk(self.inner) }
-    }
-
-    /// Get the current index
-    pub fn index(&self) -> i64 {
-        unsafe { MdfReaderGetIndex(self.inner) }
     }
 
     /// Open the MDF file for reading
@@ -92,73 +84,6 @@ impl MdfReader {
             }
         }
     }
-
-    /// Read data for a specific data group
-    pub fn read_data(&mut self, group: &mut DataGroup) -> Result<()> {
-        unsafe {
-            if MdfReaderReadData(self.inner, group.as_mut_ptr()) {
-                Ok(())
-            } else {
-                Err(MdfError::DataRead)
-            }
-        }
-    }
-
-    /// Get the file associated with this reader
-    pub fn file(&self) -> Option<MdfFile> {
-        unsafe {
-            let file_ptr = MdfReaderGetFile(self.inner);
-            if file_ptr.is_null() {
-                None
-            } else {
-                Some(MdfFile::from_ptr(file_ptr as *mut _))
-            }
-        }
-    }
-
-    /// Get the number of data groups
-    pub fn data_group_count(&self) -> usize {
-        unsafe { MdfReaderGetDataGroupCount(self.inner) }
-    }
-
-    /// Get a data group by index
-    pub fn data_group(&self, index: usize) -> Result<DataGroup> {
-        if index >= self.data_group_count() {
-            return Err(MdfError::IndexOutOfBounds(index));
-        }
-
-        unsafe {
-            let group_ptr = MdfReaderGetDataGroup(self.inner, index);
-            if group_ptr.is_null() {
-                Err(MdfError::NullPointer)
-            } else {
-                Ok(DataGroup::from_ptr(group_ptr as *mut _))
-            }
-        }
-    }
-
-    /// Get all data groups
-    pub fn data_groups(&self) -> Vec<DataGroup> {
-        let count = self.data_group_count();
-        let mut groups = Vec::with_capacity(count);
-
-        for i in 0..count {
-            if let Ok(group) = self.data_group(i) {
-                groups.push(group);
-            }
-        }
-
-        groups
-    }
-
-    /// Convenience method to read an entire MDF file
-    pub fn read_everything(&mut self) -> Result<()> {
-        self.open()?;
-        self.read_header()?;
-        self.read_measurement_info()?;
-        self.read_everything_but_data()?;
-        Ok(())
-    }
 }
 
 impl Drop for MdfReader {
@@ -179,6 +104,7 @@ unsafe impl Send for MdfReader {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
     use tempfile::NamedTempFile;
 
     #[test]
