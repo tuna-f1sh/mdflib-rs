@@ -14,10 +14,7 @@
 //! use mdflib::{MdfReader, Result};
 //!
 //! fn read_mdf_file() -> Result<()> {
-//!     let mut reader = MdfReader::new("example.mdf")?;
-//!     reader.open()?;
-//!     reader.read_header()?;
-//!     reader.read_measurement_info()?;
+//!     let mut reader = MdfReader::new("example.mdf").unwrap();
 //!     Ok(())
 //! }
 //! ```
@@ -32,12 +29,4 @@ pub use error::{MdfError, Result};
 pub use reader::MdfReader;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_basic_usage() {
-        // Basic smoke test
-        assert!(true);
-    }
-}
+mod tests {}

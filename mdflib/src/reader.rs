@@ -20,7 +20,7 @@ impl MdfReader {
         let c_path = CString::new(path_str)?;
 
         unsafe {
-            let reader = mdflib_sys::mdf_MdfReader::MdfReaderInit(c_path.as_ptr());
+            let reader = MdfLibrary_ExportFunctions_MdfReaderInit(c_path.as_ptr());
             if reader.is_null() {
                 return Err(MdfError::FileOpen(path_str.to_string()));
             }
@@ -31,13 +31,13 @@ impl MdfReader {
 
     /// Check if the reader is in a valid state
     pub fn is_ok(&self) -> bool {
-        unsafe { MdfReaderIsOk(self.inner) }
+        unsafe { MdfLibrary_ExportFunctions_MdfReaderIsOk(self.inner) }
     }
 
     /// Open the MDF file for reading
     pub fn open(&mut self) -> Result<()> {
         unsafe {
-            if MdfReaderOpen(self.inner) {
+            if MdfLibrary_ExportFunctions_MdfReaderOpen(self.inner) {
                 Ok(())
             } else {
                 Err(MdfError::FileOpen("Failed to open file".to_string()))
@@ -48,14 +48,14 @@ impl MdfReader {
     /// Close the MDF file
     pub fn close(&mut self) {
         unsafe {
-            MdfReaderClose(self.inner);
+            MdfLibrary_ExportFunctions_MdfReaderClose(self.inner);
         }
     }
 
     /// Read the file header
     pub fn read_header(&mut self) -> Result<()> {
         unsafe {
-            if MdfReaderReadHeader(self.inner) {
+            if MdfLibrary_ExportFunctions_MdfReaderReadHeader(self.inner) {
                 Ok(())
             } else {
                 Err(MdfError::HeaderRead)
@@ -66,7 +66,7 @@ impl MdfReader {
     /// Read measurement information
     pub fn read_measurement_info(&mut self) -> Result<()> {
         unsafe {
-            if MdfReaderReadMeasurementInfo(self.inner) {
+            if MdfLibrary_ExportFunctions_MdfReaderReadMeasurementInfo(self.inner) {
                 Ok(())
             } else {
                 Err(MdfError::MeasurementInfo)
@@ -77,7 +77,7 @@ impl MdfReader {
     /// Read everything except data
     pub fn read_everything_but_data(&mut self) -> Result<()> {
         unsafe {
-            if MdfReaderReadEverythingButData(self.inner) {
+            if MdfLibrary_ExportFunctions_MdfReaderReadEverythingButData(self.inner) {
                 Ok(())
             } else {
                 Err(MdfError::DataRead)
@@ -90,7 +90,7 @@ impl Drop for MdfReader {
     fn drop(&mut self) {
         if !self.inner.is_null() {
             unsafe {
-                MdfReaderUnInit(self.inner);
+                MdfLibrary_ExportFunctions_MdfReaderUnInit(self.inner);
             }
         }
     }
@@ -104,7 +104,6 @@ unsafe impl Send for MdfReader {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use tempfile::NamedTempFile;
 
     #[test]

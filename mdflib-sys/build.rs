@@ -1,5 +1,5 @@
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
@@ -22,7 +22,7 @@ fn main() {
     println!("cargo:rerun-if-changed=bundled");
 }
 
-fn build_bundled(out_dir: &PathBuf, manifest_dir: &PathBuf) {
+fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
     let bundled_dir = manifest_dir.join("bundled");
     let build_dir = out_dir.join("build");
     let install_dir = out_dir.join("install");
@@ -188,11 +188,7 @@ fn setup_zlib_dependency() {
         // Extract library name (remove lib prefix and extension)
         if let Some(lib_name) = lib_path.file_stem() {
             let lib_name_str = lib_name.to_string_lossy();
-            let clean_name = if lib_name_str.starts_with("lib") {
-                &lib_name_str[3..]
-            } else {
-                &lib_name_str
-            };
+            let clean_name = lib_name_str.strip_prefix("lib").unwrap_or(&lib_name_str);
             println!("cargo:rustc-link-lib={}", clean_name);
         } else {
             // Fallback if we can't parse the path
@@ -241,11 +237,7 @@ fn setup_expat_dependency() {
         // Extract library name (remove lib prefix and extension)
         if let Some(lib_name) = lib_path.file_stem() {
             let lib_name_str = lib_name.to_string_lossy();
-            let clean_name = if lib_name_str.starts_with("lib") {
-                &lib_name_str[3..]
-            } else {
-                &lib_name_str
-            };
+            let clean_name = lib_name_str.strip_prefix("lib").unwrap_or(&lib_name_str);
             println!("cargo:rustc-link-lib={}", clean_name);
         } else {
             // Fallback if we can't parse the path
@@ -334,7 +326,7 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
     }
 }
 
-fn setup_bundled_linking(install_dir: &PathBuf) {
+fn setup_bundled_linking(install_dir: &Path) {
     let lib_dir = install_dir.join("lib");
     let lib64_dir = install_dir.join("lib64");
 
@@ -350,7 +342,7 @@ fn setup_bundled_linking(install_dir: &PathBuf) {
     println!("cargo:rustc-link-lib=dylib=mdflibrary");
 
     // Link the main mdflib library
-    println!("cargo:rustc-link-lib=static=mdf");
+    // println!("cargo:rustc-link-lib=static=mdf");
 
     // Link required dependencies
     link_dependencies();
@@ -371,7 +363,6 @@ fn setup_bundled_linking(install_dir: &PathBuf) {
     } else if cfg!(target_os = "macos") {
         println!("cargo:rustc-link-lib=dylib=c++");
         println!("cargo:rustc-link-lib=dylib=System");
-        println!("cargo:rustc-link-lib=dylib=stdc++");
         println!("cargo:rustc-link-lib=framework=Foundation");
     }
 
@@ -439,7 +430,7 @@ fn link_system_library() {
     }
 }
 
-fn generate_bindings(manifest_dir: &PathBuf, out_dir: &PathBuf) {
+fn generate_bindings(manifest_dir: &Path, out_dir: &Path) {
     let bundled_dir = manifest_dir.join("bundled");
     let mdf_export_h = bundled_dir
         .join("include")
@@ -492,7 +483,7 @@ fn generate_bindings(manifest_dir: &PathBuf, out_dir: &PathBuf) {
         }
 
         // Try to find the system SDK
-        if let Ok(output) = Command::new("xcrun").args(&["--show-sdk-path"]).output() {
+        if let Ok(output) = Command::new("xcrun").args(["--show-sdk-path"]).output() {
             if output.status.success() {
                 let sdk_path = String::from_utf8_lossy(&output.stdout);
                 bindgen_builder =
