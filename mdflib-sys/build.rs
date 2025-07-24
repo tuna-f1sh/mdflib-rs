@@ -10,7 +10,7 @@ fn main() {
     if cfg!(feature = "bundled") {
         build_bundled(&out_dir, &manifest_dir);
     } else if cfg!(feature = "system") {
-        link_system_library();
+        setup_system_linking();
     } else {
         panic!("Either 'bundled' or 'system' feature must be enabled");
     }
@@ -391,10 +391,24 @@ fn link_dependencies() {
     println!("cargo:rustc-link-lib=expat");
 }
 
-fn link_system_library() {
+fn setup_system_linking() {
+    // Build the C wrapper
+    let mut cc_build = cc::Build::new();
+    cc_build
+        .cpp(true)
+        .file("src/mdf_c_wrapper.cpp")
+        .flag("-Wno-overloaded-virtual") // Suppress mdf::MdString::ToXml' hides overloaded virtual function
+        .flag("-std=c++17");
+
+    if cfg!(target_os = "macos") {
+        cc_build.cpp_link_stdlib("c++");
+    } else {
+        cc_build.cpp_link_stdlib("stdc++");
+    }
+
     // Try to find system-installed mdflib using pkg-config
     if let Ok(library) = pkg_config::Config::new()
-        .atleast_version("4.0")
+        .atleast_version("2.1")
         .probe("mdflib")
     {
         for path in library.link_paths {
@@ -412,7 +426,7 @@ fn link_system_library() {
         println!("cargo:warning=pkg-config failed, trying manual discovery");
 
         // Fallback: assume library is in standard locations
-        println!("cargo:rustc-link-lib=static=mdf"); // Link as static library
+        println!("cargo:rustc-link-lib=mdf");
 
         // Also link dependencies since mdflib depends on them
         link_dependencies();
@@ -427,6 +441,8 @@ fn link_system_library() {
             println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
             println!("cargo:include=/usr/local/include");
             println!("cargo:include=/usr/include");
+            cc_build.include("/usr/local/include");
+            cc_build.include("/usr/include");
         } else if cfg!(target_os = "macos") {
             println!("cargo:rustc-link-lib=dylib=c++"); // Explicitly link C++ standard library
             println!("cargo:rustc-link-lib=dylib=System");
@@ -435,6 +451,8 @@ fn link_system_library() {
             println!("cargo:rustc-link-search=native=/opt/homebrew/lib");
             println!("cargo:include=/usr/local/include");
             println!("cargo:include=/opt/homebrew/include");
+            cc_build.include("/usr/local/include");
+            cc_build.include("/opt/homebrew/include");
         } else if cfg!(target_os = "windows") {
             // Windows-specific paths
             println!("cargo:rustc-link-lib=dylib=stdc++"); // Explicitly link C++ standard library
@@ -446,8 +464,11 @@ fn link_system_library() {
             println!("cargo:rustc-link-lib=dylib=ole32");
             println!("cargo:rustc-link-search=native=C:/Program Files/mdflib/lib");
             println!("cargo:include=C:/Program Files/mdflib/include");
+            cc_build.include("C:/Program Files/mdflib/include");
         }
     }
+
+    cc_build.compile("mdf_c_wrapper");
 }
 
 fn generate_bindings(manifest_dir: &Path, out_dir: &Path) {
