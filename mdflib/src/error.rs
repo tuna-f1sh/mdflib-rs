@@ -1,5 +1,4 @@
 //! Error types for mdflib operations
-
 use thiserror::Error;
 
 /// Error types that can occur when working with MDF files
@@ -49,6 +48,9 @@ pub enum MdfError {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("CString conversion error: {0}")]
+    CStringConversion(#[from] std::ffi::IntoStringError),
 }
 
 /// Result type for mdflib operations

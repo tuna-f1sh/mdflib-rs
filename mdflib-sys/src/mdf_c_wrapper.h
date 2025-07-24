@@ -62,6 +62,7 @@ EXPORT MdfReader* MdfReaderInit(const char* filename);
 EXPORT void MdfReaderUnInit(MdfReader* reader);
 EXPORT int64_t MdfReaderGetIndex(MdfReader* reader);
 EXPORT bool MdfReaderIsOk(MdfReader* reader);
+EXPORT bool MdfReaderIsFinalized(MdfReader* reader);
 EXPORT const MdfFile* MdfReaderGetFile(MdfReader* reader);
 EXPORT const IHeader* MdfReaderGetHeader(MdfReader* reader);
 EXPORT const IDataGroup* MdfReaderGetDataGroup(MdfReader* reader, size_t index);

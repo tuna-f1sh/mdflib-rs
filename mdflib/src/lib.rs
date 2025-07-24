@@ -19,13 +19,20 @@
 //! }
 //! ```
 
+pub mod canmessage;
+pub mod channel;
+pub mod channelgroup;
+pub mod datagroup;
 pub mod error;
+pub mod header;
 pub mod reader;
-// pub mod writer;
-// pub mod channel;
-// pub mod data_group;
 
+pub use canmessage::CanMessage;
+pub use channel::Channel;
+pub use channelgroup::ChannelGroup;
+pub use datagroup::DataGroup;
 pub use error::{MdfError, Result};
+pub use header::MdfHeader;
 pub use reader::MdfReader;
 
 #[cfg(test)]

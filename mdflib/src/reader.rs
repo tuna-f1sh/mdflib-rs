@@ -1,6 +1,9 @@
 //! MDF file reader implementation
-
-use crate::error::{MdfError, Result};
+use crate::{
+    datagroup::DataGroup,
+    error::{MdfError, Result},
+    header::MdfHeader,
+};
 use mdflib_sys::*;
 use std::ffi::CString;
 use std::path::Path;
@@ -29,6 +32,11 @@ impl MdfReader {
     /// Check if the reader is in a valid state
     pub fn is_ok(&self) -> bool {
         unsafe { MdfReaderIsOk(self.inner) }
+    }
+
+    /// Check if the reader is finialized
+    pub fn is_finalized(&self) -> bool {
+        unsafe { MdfReaderIsFinalized(self.inner) }
     }
 
     /// Open the MDF file for reading
@@ -71,10 +79,50 @@ impl MdfReader {
         }
     }
 
+    /// Gets the header from the file.
+    pub fn get_header(&self) -> Option<MdfHeader> {
+        unsafe {
+            let header = MdfReaderGetHeader(self.inner);
+            if header.is_null() {
+                None
+            } else {
+                Some(MdfHeader::new(header))
+            }
+        }
+    }
+
     /// Read everything except data
     pub fn read_everything_but_data(&mut self) -> Result<()> {
         unsafe {
             if MdfReaderReadEverythingButData(self.inner) {
+                Ok(())
+            } else {
+                Err(MdfError::DataRead)
+            }
+        }
+    }
+
+    /// Gets the number of data groups in the file.
+    pub fn get_data_group_count(&self) -> usize {
+        unsafe { MdfReaderGetDataGroupCount(self.inner) }
+    }
+
+    /// Gets a data group by its index.
+    pub fn get_data_group(&self, index: usize) -> Option<DataGroup> {
+        unsafe {
+            let dg = MdfReaderGetDataGroup(self.inner, index) as *mut IDataGroup;
+            if dg.is_null() {
+                None
+            } else {
+                Some(DataGroup::new(dg))
+            }
+        }
+    }
+
+    /// Read data from a data group
+    pub fn read_data(&mut self, group: &mut DataGroup) -> Result<()> {
+        unsafe {
+            if MdfReaderReadData(self.inner, group.inner) {
                 Ok(())
             } else {
                 Err(MdfError::DataRead)

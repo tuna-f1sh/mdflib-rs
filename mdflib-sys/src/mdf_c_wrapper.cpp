@@ -49,6 +49,10 @@ EXPORT bool MdfReaderIsOk(MdfReader* reader) {
     return reader->IsOk();
 }
 
+EXPORT bool MdfReaderIsFinalized(MdfReader* reader) {
+    return reader->IsFinalized();
+}
+
 EXPORT const MdfFile* MdfReaderGetFile(MdfReader* reader) {
     return reader->GetFile();
 }
