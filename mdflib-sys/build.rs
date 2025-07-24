@@ -20,6 +20,13 @@ fn main() {
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=bundled");
+    println!("cargo:rerun-if-changed=src/mdf_c_wrapper.h");
+    println!("cargo:rerun-if-changed=src/mdf_c_wrapper.cpp");
+
+    println!(
+        "cargo:warning=TARGET: {}",
+        env::var("TARGET").unwrap_or_else(|_| "unknown".to_string())
+    );
 }
 
 fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
@@ -51,8 +58,8 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         .arg(&bundled_dir)
         .arg(format!("-DCMAKE_INSTALL_PREFIX={}", install_dir.display()))
         .arg("-DCMAKE_BUILD_TYPE=Release")
-        .arg("-DBUILD_SHARED_LIBS=ON") // Build static library
-        .arg("-DMDF_BUILD_SHARED_LIB=ON") // Build the export library
+        .arg("-DBUILD_SHARED_LIBS=OFF") // Build shared library
+        .arg("-DMDF_BUILD_SHARED_LIB=OFF") // Build the export library
         .arg("-DMDF_BUILD_SHARED_LIB_NET=OFF") // Don't build .NET wrapper
         .arg("-DMDF_BUILD_TEST=OFF") // Don't build tests
         .arg("-DMDF_BUILD_DOC=OFF") // Don't build documentation
@@ -67,16 +74,6 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
             } else if cfg!(target_arch = "x86") {
                 cmake_config.arg("-A").arg("Win32");
             }
-        } else {
-            cmake_config.arg("-G").arg("MinGW Makefiles");
-        }
-
-        // Help CMake find dependencies on Windows
-        if let Ok(vcpkg_root) = env::var("VCPKG_ROOT") {
-            cmake_config.arg(format!(
-                "-DCMAKE_TOOLCHAIN_FILE={}/scripts/buildsystems/vcpkg.cmake",
-                vcpkg_root
-            ));
         }
     } else {
         cmake_config.arg("-G").arg("Unix Makefiles");
@@ -144,16 +141,33 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         );
     }
 
+    // Build the C wrapper
+    let mut cc_build = cc::Build::new();
+    cc_build
+        .cpp(true)
+        .file("src/mdf_c_wrapper.cpp")
+        .include(install_dir.join("include"))
+        .include(bundled_dir.join("include"))
+        .flag("-Wno-overloaded-virtual") // Suppress mdf::MdString::ToXml' hides overloaded virtual function
+        .flag("-std=c++17");
+
+    if cfg!(target_os = "macos") {
+        cc_build.cpp_link_stdlib("c++");
+    } else {
+        cc_build.cpp_link_stdlib("stdc++");
+    }
+    cc_build.compile("mdf_c_wrapper");
+
     // Set up linking
     setup_bundled_linking(&install_dir);
 }
 
 fn setup_dependencies() {
     println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
-    println!("cargo:rerun-if-env-changed=ZLIB_LIBRARY");
-    println!("cargo:rerun-if-env-changed=ZLIB_INCLUDE_DIR");
-    println!("cargo:rerun-if-env-changed=EXPAT_LIBRARY");
-    println!("cargo:rerun-if-env-changed=EXPAT_INCLUDE_DIR");
+    println!("cargo:rerun-if-changed=ZLIB_LIBRARY");
+    println!("cargo:rerun-if-changed=ZLIB_INCLUDE_DIR");
+    println!("cargo:rerun-if-changed=EXPAT_LIBRARY");
+    println!("cargo:rerun-if-changed=EXPAT_INCLUDE_DIR");
 
     // Try to find zlib
     setup_zlib_dependency();
@@ -190,13 +204,6 @@ fn setup_zlib_dependency() {
             let lib_name_str = lib_name.to_string_lossy();
             let clean_name = lib_name_str.strip_prefix("lib").unwrap_or(&lib_name_str);
             println!("cargo:rustc-link-lib={}", clean_name);
-        } else {
-            // Fallback if we can't parse the path
-            if cfg!(target_os = "windows") {
-                println!("cargo:rustc-link-lib=zlib");
-            } else {
-                println!("cargo:rustc-link-lib=z");
-            }
         }
 
         // Add include directory if provided
@@ -239,9 +246,6 @@ fn setup_expat_dependency() {
             let lib_name_str = lib_name.to_string_lossy();
             let clean_name = lib_name_str.strip_prefix("lib").unwrap_or(&lib_name_str);
             println!("cargo:rustc-link-lib={}", clean_name);
-        } else {
-            // Fallback if we can't parse the path
-            println!("cargo:rustc-link-lib=expat");
         }
 
         // Add include directory if provided
@@ -295,7 +299,7 @@ fn add_dependency_hints(cmake_config: &mut Command) {
     }
 
     if let Ok(expat_include) = env::var("EXPAT_INCLUDE_DIR") {
-        cmake_config.arg(format!("-DEXPAT_INCLUDE_DIR={}", expat_include));
+        cmake_config.arg(format!("-I{}", expat_include));
     }
 
     // If no environment variables, fall back to platform-specific discovery
@@ -338,13 +342,15 @@ fn setup_bundled_linking(install_dir: &Path) {
         println!("cargo:rustc-link-search=native={}", lib64_dir.display());
     }
 
-    // Link the mdflib export library (this contains the C exports)
-    println!("cargo:rustc-link-lib=dylib=mdflibrary");
+    // Link the mdflib core library (static)
+    println!("cargo:rustc-link-lib=static=mdf");
 
-    // Link the main mdflib library
-    // println!("cargo:rustc-link-lib=static=mdf");
+    // Link the C wrapper library (static)
+    println!("cargo:rustc-link-lib=static=mdf_c_wrapper");
 
     // Link required dependencies
+    // Removed direct calls to setup_zlib_dependency and setup_expat_dependency
+    // as they are now called from setup_dependencies
     link_dependencies();
 
     // Platform-specific system library dependencies
@@ -361,7 +367,7 @@ fn setup_bundled_linking(install_dir: &Path) {
         println!("cargo:rustc-link-lib=dylib=pthread");
         println!("cargo:rustc-link-lib=dylib=dl");
     } else if cfg!(target_os = "macos") {
-        println!("cargo:rustc-link-lib=dylib=c++");
+        println!("cargo:rustc-link-lib=dylib=c++"); // Use libc++ on macOS
         println!("cargo:rustc-link-lib=dylib=System");
         println!("cargo:rustc-link-lib=framework=Foundation");
     }
@@ -406,24 +412,38 @@ fn link_system_library() {
         println!("cargo:warning=pkg-config failed, trying manual discovery");
 
         // Fallback: assume library is in standard locations
-        println!("cargo:rustc-link-lib=mdf");
+        println!("cargo:rustc-link-lib=static=mdf"); // Link as static library
 
         // Also link dependencies since mdflib depends on them
         link_dependencies();
 
         if cfg!(target_os = "linux") {
+            println!("cargo:rustc-link-lib=dylib=stdc++"); // Explicitly link C++ standard library
+            println!("cargo:rustc-link-lib=dylib=m");
+            println!("cargo:rustc-link-lib=dylib=pthread");
+            println!("cargo:rustc-link-lib=dylib=dl");
             println!("cargo:rustc-link-search=native=/usr/local/lib");
             println!("cargo:rustc-link-search=native=/usr/lib");
             println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
             println!("cargo:include=/usr/local/include");
             println!("cargo:include=/usr/include");
         } else if cfg!(target_os = "macos") {
+            println!("cargo:rustc-link-lib=dylib=c++"); // Explicitly link C++ standard library
+            println!("cargo:rustc-link-lib=dylib=System");
+            println!("cargo:rustc-link-lib=framework=Foundation");
             println!("cargo:rustc-link-search=native=/usr/local/lib");
             println!("cargo:rustc-link-search=native=/opt/homebrew/lib");
             println!("cargo:include=/usr/local/include");
             println!("cargo:include=/opt/homebrew/include");
         } else if cfg!(target_os = "windows") {
             // Windows-specific paths
+            println!("cargo:rustc-link-lib=dylib=stdc++"); // Explicitly link C++ standard library
+            println!("cargo:rustc-link-lib=dylib=user32");
+            println!("cargo:rustc-link-lib=dylib=kernel32");
+            println!("cargo:rustc-link-lib=dylib=ws2_32");
+            println!("cargo:rustc-link-lib=dylib=advapi2");
+            println!("cargo:rustc-link-lib=dylib=shell32");
+            println!("cargo:rustc-link-lib=dylib=ole32");
             println!("cargo:rustc-link-search=native=C:/Program Files/mdflib/lib");
             println!("cargo:include=C:/Program Files/mdflib/include");
         }
@@ -431,37 +451,9 @@ fn link_system_library() {
 }
 
 fn generate_bindings(manifest_dir: &Path, out_dir: &Path) {
-    let bundled_dir = manifest_dir.join("bundled");
-    let mdf_export_h = bundled_dir
-        .join("include")
-        .join("mdflibrary")
-        .join("MdfExport.h");
+    let wrapper_path = manifest_dir.join("src").join("mdf_c_wrapper.h");
 
-    if !mdf_export_h.exists() {
-        panic!(
-            "MdfExport.h not found at {}. \
-            Make sure bundled mdflib source is available.",
-            mdf_export_h.display()
-        );
-    }
-
-    println!("Generating bindings from {}", mdf_export_h.display());
-
-    // Create a simple wrapper header that includes MdfExport.h
-    // with proper standard includes
-    let wrapper_content = format!(
-        r#"
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
-
-#include "{}"
-"#,
-        mdf_export_h.display()
-    );
-
-    let wrapper_path = out_dir.join("wrapper.h");
-    std::fs::write(&wrapper_path, wrapper_content).expect("Failed to write wrapper.h");
+    println!("Generating bindings from {}", wrapper_path.display());
 
     let mut bindgen_builder = bindgen::Builder::default()
         .header(wrapper_path.to_str().unwrap())
@@ -470,7 +462,7 @@ fn generate_bindings(manifest_dir: &Path, out_dir: &Path) {
         .clang_arg("-std=c++17");
 
     // Add bundled include path
-    let bundled_include = bundled_dir.join("include");
+    let bundled_include = manifest_dir.join("bundled").join("include");
     if bundled_include.exists() {
         bindgen_builder = bindgen_builder.clang_arg(format!("-I{}", bundled_include.display()));
     }
@@ -510,6 +502,7 @@ fn generate_bindings(manifest_dir: &Path, out_dir: &Path) {
             non_exhaustive: false,
         })
         .prepend_enum_name(true) // This prefixes enum variants with the enum name
+        .blocklist_type("std::.*") // Block all std types
         // Generate useful derives
         .derive_debug(true)
         .derive_default(true)
@@ -533,10 +526,6 @@ fn print_zlib_install_instructions() {
     if cfg!(target_os = "linux") {
         eprintln!("  Ubuntu/Debian: sudo apt install zlib1g-dev");
         eprintln!("  CentOS/RHEL/Fedora: sudo dnf install zlib-devel");
-    } else if cfg!(target_os = "macos") {
-        eprintln!("  macOS: brew install zlib");
-    } else if cfg!(target_os = "windows") {
-        eprintln!("  Windows: vcpkg install zlib:x64-windows");
     }
     eprintln!("\nAlternatively, set environment variables:");
     eprintln!("  ZLIB_LIBRARY=/path/to/libz.so (or .a/.lib)");
@@ -547,10 +536,6 @@ fn print_expat_install_instructions() {
     if cfg!(target_os = "linux") {
         eprintln!("  Ubuntu/Debian: sudo apt install libexpat1-dev");
         eprintln!("  CentOS/RHEL/Fedora: sudo dnf install expat-devel");
-    } else if cfg!(target_os = "macos") {
-        eprintln!("  macOS: brew install expat");
-    } else if cfg!(target_os = "windows") {
-        eprintln!("  Windows: vcpkg install expat:x64-windows");
     }
     eprintln!("\nAlternatively, set environment variables:");
     eprintln!("  EXPAT_LIBRARY=/path/to/libexpat.so (or .a/.lib)");
