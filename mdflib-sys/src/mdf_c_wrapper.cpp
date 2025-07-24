@@ -1,380 +1,500 @@
-#include "mdf_c_wrapper.h"
+/*
+ * Comprehensive C export wrapper for mdflib
+ * Based on MdfExport.cpp from mdflib
+ */
 
-// Include all mdflib headers
-#include "mdf/canmessage.h"
-#include "mdf/iattachment.h"
-#include "mdf/ichannel.h"
-#include "mdf/ichannelarray.h"
-#include "mdf/ichannelconversion.h"
-#include "mdf/ichannelgroup.h"
-#include "mdf/ichannelobserver.h"
-#include "mdf/idatagroup.h"
-#include "mdf/ievent.h"
-#include "mdf/ifilehistory.h"
-#include "mdf/iheader.h"
-#include "mdf/imetadata.h"
-#include "mdf/isourceinformation.h"
-#include "mdf/mdffactory.h"
-#include "mdf/mdffile.h"
-#include "mdf/mdfreader.h"
-#include "mdf/mdfwriter.h"
+#include <mdf/ichannelgroup.h>
+#include <mdf/idatagroup.h>
+#include <mdf/ievent.h>
+#include <mdf/ifilehistory.h>
+#include <mdf/mdffactory.h>
+#include <mdf/mdfreader.h>
+#include <mdf/mdfwriter.h>
+#include <mdf/mdffile.h>
+#include <mdf/canmessage.h>
+#include <mdf/ichannel.h>
+#include <mdf/ichannelconversion.h>
+#include <mdf/ichannelarray.h>
+#include <mdf/isourceinformation.h>
+#include <mdf/iattachment.h>
+#include <mdf/imetadata.h>
 
-// use mdf namespace
 using namespace mdf;
+
+// Export macros for different platforms
+#if defined(_WIN32)
+#define EXPORT __declspec(dllexport)
+#elif defined(__linux__) || defined(__APPLE__) || defined(__CYGWIN__)
+#define EXPORT __attribute__((visibility("default")))
+#else
+#define EXPORT
+#endif
 
 extern "C" {
 
 // MdfReader functions
-MdfReader *MdfReaderInit(const char *filename) {
-    auto reader = mdf::MdfFactory::CreateMdfReader(filename);
-    return reinterpret_cast<MdfReader*>(reader.release());
+EXPORT MdfReader* MdfReaderInit(const char* filename) {
+    return new MdfReader(filename);
 }
 
-void MdfReaderUnInit(MdfReader *reader) {
-    delete reinterpret_cast<mdf::MdfReader*>(reader);
+EXPORT void MdfReaderUnInit(MdfReader* reader) {
+    delete reader;
 }
 
-int64_t MdfReaderGetIndex(MdfReader *reader) {
-    return reinterpret_cast<mdf::MdfReader*>(reader)->GetIndex();
+EXPORT int64_t MdfReaderGetIndex(MdfReader* reader) {
+    return reader->Index();
 }
 
-bool MdfReaderIsOk(MdfReader *reader) {
-    return reinterpret_cast<mdf::MdfReader*>(reader)->IsOk();
+EXPORT bool MdfReaderIsOk(MdfReader* reader) {
+    return reader->IsOk();
 }
 
-const MdfFile *MdfReaderGetFile(MdfReader *reader) {
-    return reinterpret_cast<const MdfFile*>(reinterpret_cast<const mdf::MdfReader*>(reader)->GetFile());
+EXPORT const MdfFile* MdfReaderGetFile(MdfReader* reader) {
+    return reader->GetFile();
 }
 
-const IHeader *MdfReaderGetHeader(MdfReader *reader) {
-    return reinterpret_cast<const IHeader*>(reinterpret_cast<const mdf::MdfReader*>(reader)->GetHeader());
+EXPORT const IHeader* MdfReaderGetHeader(MdfReader* reader) {
+    return reader->GetHeader();
 }
 
-const IDataGroup *MdfReaderGetDataGroup(MdfReader *reader, size_t index) {
-    return reinterpret_cast<const IDataGroup*>(reinterpret_cast<const mdf::MdfReader*>(reader)->GetDataGroup(index));
+EXPORT const IDataGroup* MdfReaderGetDataGroup(MdfReader* reader, size_t index) {
+    return reader->GetDataGroup(index);
 }
 
-bool MdfReaderOpen(MdfReader *reader) {
-    return reinterpret_cast<mdf::MdfReader*>(reader)->Open();
+EXPORT size_t MdfReaderGetDataGroupCount(MdfReader* reader) {
+    const auto* file = reader->GetFile();
+    if (!file) return 0;
+    DataGroupList groups;
+    file->DataGroups(groups);
+    return groups.size();
 }
 
-void MdfReaderClose(MdfReader *reader) {
-    reinterpret_cast<mdf::MdfReader*>(reader)->Close();
+EXPORT bool MdfReaderOpen(MdfReader* reader) {
+    return reader->Open();
 }
 
-bool MdfReaderReadHeader(MdfReader *reader) {
-    return reinterpret_cast<mdf::MdfReader*>(reader)->ReadHeader();
+EXPORT void MdfReaderClose(MdfReader* reader) {
+    reader->Close();
 }
 
-bool MdfReaderReadMeasurementInfo(MdfReader *reader) {
-    return reinterpret_cast<mdf::MdfReader*>(reader)->ReadMeasurementInfo();
+EXPORT bool MdfReaderReadHeader(MdfReader* reader) {
+    return reader->ReadHeader();
 }
 
-bool MdfReaderReadEverythingButData(MdfReader *reader) {
-    return reinterpret_cast<mdf::MdfReader*>(reader)->ReadEverythingButData();
+EXPORT bool MdfReaderReadMeasurementInfo(MdfReader* reader) {
+    return reader->ReadMeasurementInfo();
 }
 
-bool MdfReaderReadData(MdfReader *reader, IDataGroup *group) {
-    return reinterpret_cast<mdf::MdfReader*>(reader)->ReadData(reinterpret_cast<const mdf::IDataGroup*>(group));
+EXPORT bool MdfReaderReadEverythingButData(MdfReader* reader) {
+    return reader->ReadEverythingButData();
+}
+
+EXPORT bool MdfReaderReadData(MdfReader* reader, IDataGroup* group) {
+    return reader->ReadData(*group);
 }
 
 // MdfWriter functions
-MdfWriter *MdfWriterInit(MdfWriterType type, const char *filename) {
-    MdfLibrary::MdfWriterType writer_type;
-    // Note: MdfWriterType enum in wrapper.h has different values than in MdfExport.h
-    // Assuming names are what matters.
-    // wrapper.h: MDF_WRITER_TYPE_MDF4 = 0, MDF_WRITER_TYPE_MDF3 = 1
-    // MdfExport.h: Mdf3Basic = 0, Mdf4Basic = 1
-    switch (type) {
-        case MDF_WRITER_TYPE_MDF4: // is 0
-            writer_type = MdfLibrary::MdfWriterType::Mdf4Basic; // is 1
-            break;
-        case MDF_WRITER_TYPE_MDF3: // is 1
-            writer_type = MdfLibrary::MdfWriterType::Mdf3Basic; // is 0
-            break;
-        default:
-            return nullptr;
-    }
-    auto writer = mdf::MdfFactory::CreateMdfWriter(writer_type, filename);
-    return reinterpret_cast<MdfWriter*>(writer.release());
+EXPORT MdfWriter* MdfWriterInit(MdfWriterType type, const char* filename) {
+    auto* writer = MdfFactory::CreateMdfWriterEx(type);
+    if (!writer) return nullptr;
+    writer->Init(filename);
+    return writer;
 }
 
-void MdfWriterUnInit(MdfWriter *writer) {
-    delete reinterpret_cast<mdf::MdfWriter*>(writer);
+EXPORT void MdfWriterUnInit(MdfWriter* writer) {
+    delete writer;
 }
 
-MdfFile *MdfWriterGetFile(MdfWriter *writer) {
-    return reinterpret_cast<MdfFile*>(reinterpret_cast<mdf::MdfWriter*>(writer)->GetFile());
+EXPORT MdfFile* MdfWriterGetFile(MdfWriter* writer) {
+    return writer->GetFile();
 }
 
-IHeader *MdfWriterGetHeader(MdfWriter *writer) {
-    return reinterpret_cast<IHeader*>(reinterpret_cast<mdf::MdfWriter*>(writer)->GetHeader());
+EXPORT IHeader* MdfWriterGetHeader(MdfWriter* writer) {
+    return writer->Header();
 }
 
-bool MdfWriterIsFileNew(MdfWriter *writer) {
-    return reinterpret_cast<mdf::MdfWriter*>(writer)->IsFileNew();
+EXPORT bool MdfWriterIsFileNew(MdfWriter* writer) {
+    return writer->IsFileNew();
 }
 
-bool MdfWriterGetCompressData(MdfWriter *writer) {
-    return reinterpret_cast<mdf::MdfWriter*>(writer)->GetCompressData();
+EXPORT bool MdfWriterGetCompressData(MdfWriter* writer) {
+    return writer->CompressData();
 }
 
-void MdfWriterSetCompressData(MdfWriter *writer, bool compress) {
-    reinterpret_cast<mdf::MdfWriter*>(writer)->SetCompressData(compress);
+EXPORT void MdfWriterSetCompressData(MdfWriter* writer, bool compress) {
+    writer->CompressData(compress);
 }
 
-double MdfWriterGetPreTrigTime(MdfWriter *writer) {
-    return reinterpret_cast<mdf::MdfWriter*>(writer)->GetPreTrigTime();
+EXPORT double MdfWriterGetPreTrigTime(MdfWriter* writer) {
+    return writer->PreTrigTime();
 }
 
-void MdfWriterSetPreTrigTime(MdfWriter *writer, double pre_trig_time) {
-    reinterpret_cast<mdf::MdfWriter*>(writer)->SetPreTrigTime(pre_trig_time);
+EXPORT void MdfWriterSetPreTrigTime(MdfWriter* writer, double pre_trig_time) {
+    writer->PreTrigTime(pre_trig_time);
 }
 
-uint64_t MdfWriterGetStartTime(MdfWriter *writer) {
-    return reinterpret_cast<mdf::MdfWriter*>(writer)->GetStartTime();
+EXPORT uint64_t MdfWriterGetStartTime(MdfWriter* writer) {
+    return writer->StartTime();
 }
 
-uint64_t MdfWriterGetStopTime(MdfWriter *writer) {
-    return reinterpret_cast<mdf::MdfWriter*>(writer)->GetStopTime();
+EXPORT uint64_t MdfWriterGetStopTime(MdfWriter* writer) {
+    return writer->StopTime();
 }
 
-uint16_t MdfWriterGetBusType(MdfWriter *writer) {
-    return static_cast<uint16_t>(reinterpret_cast<mdf::MdfWriter*>(writer)->GetBusType());
+EXPORT uint16_t MdfWriterGetBusType(MdfWriter* writer) {
+    return writer->BusType();
 }
 
-void MdfWriterSetBusType(MdfWriter *writer, uint16_t type) {
-    reinterpret_cast<mdf::MdfWriter*>(writer)->SetBusType(static_cast<MdfLibrary::MdfBusType>(type));
+EXPORT void MdfWriterSetBusType(MdfWriter* writer, uint16_t type) {
+    writer->BusType(type);
 }
 
-MdfStorageType MdfWriterGetStorageType(MdfWriter *writer) {
-    return static_cast<MdfStorageType>(reinterpret_cast<mdf::MdfWriter*>(writer)->GetStorageType());
+EXPORT bool MdfWriterCreateBusLogConfiguration(MdfWriter* writer) {
+    return writer->CreateBusLogConfiguration();
 }
 
-void MdfWriterSetStorageType(MdfWriter *writer, MdfStorageType type) {
-    reinterpret_cast<mdf::MdfWriter*>(writer)->SetStorageType(static_cast<MdfLibrary::MdfStorageType>(type));
+EXPORT IDataGroup* MdfWriterCreateDataGroup(MdfWriter* writer) {
+    return writer->CreateDataGroup();
 }
 
-uint32_t MdfWriterGetMaxLength(MdfWriter *writer) {
-    return reinterpret_cast<mdf::MdfWriter*>(writer)->GetMaxLength();
+EXPORT bool MdfWriterInitMeasurement(MdfWriter* writer) {
+    return writer->InitMeasurement();
 }
 
-void MdfWriterSetMaxLength(MdfWriter *writer, uint32_t length) {
-    reinterpret_cast<mdf::MdfWriter*>(writer)->SetMaxLength(length);
+EXPORT void MdfWriterSaveSample(MdfWriter* writer, IChannelGroup* group, uint64_t time) {
+    writer->SaveSample(*group, time);
 }
 
-bool MdfWriterCreateBusLogConfiguration(MdfWriter *writer) {
-    return reinterpret_cast<mdf::MdfWriter*>(writer)->CreateBusLogConfiguration();
+EXPORT void MdfWriterSaveCanMessage(MdfWriter* writer, IChannelGroup* group, uint64_t time, CanMessage* message) {
+    writer->SaveCanMessage(*group, time, *message);
 }
 
-IDataGroup *MdfWriterCreateDataGroup(MdfWriter *writer) {
-    return reinterpret_cast<IDataGroup*>(reinterpret_cast<mdf::MdfWriter*>(writer)->CreateDataGroup());
+EXPORT void MdfWriterStartMeasurement(MdfWriter* writer, uint64_t start_time) {
+    writer->StartMeasurement(start_time);
 }
 
-bool MdfWriterInitMeasurement(MdfWriter *writer) {
-    return reinterpret_cast<mdf::MdfWriter*>(writer)->InitMeasurement();
+EXPORT void MdfWriterStopMeasurement(MdfWriter* writer, uint64_t stop_time) {
+    writer->StopMeasurement(stop_time);
 }
 
-void MdfWriterSaveSample(MdfWriter *writer, IChannelGroup *group, uint64_t time) {
-    reinterpret_cast<mdf::MdfWriter*>(writer)->SaveSample(*reinterpret_cast<mdf::IChannelGroup*>(group), time);
-}
-
-void MdfWriterSaveCanMessage(MdfWriter *writer, IChannelGroup *group, uint64_t time, CanMessage *message) {
-    reinterpret_cast<mdf::MdfWriter*>(writer)->SaveCanMessage(*reinterpret_cast<mdf::IChannelGroup*>(group), time, *reinterpret_cast<mdf::CanMessage*>(message));
-}
-
-void MdfWriterStartMeasurement(MdfWriter *writer, uint64_t start_time) {
-    reinterpret_cast<mdf::MdfWriter*>(writer)->StartMeasurement(start_time);
-}
-
-void MdfWriterStopMeasurement(MdfWriter *writer, uint64_t stop_time) {
-    reinterpret_cast<mdf::MdfWriter*>(writer)->StopMeasurement(stop_time);
-}
-
-bool MdfWriterFinalizeMeasurement(MdfWriter *writer) {
-    return reinterpret_cast<mdf::MdfWriter*>(writer)->FinalizeMeasurement();
+EXPORT bool MdfWriterFinalizeMeasurement(MdfWriter* writer) {
+    return writer->FinalizeMeasurement();
 }
 
 // MdfFile functions
-size_t MdfFileGetName(MdfFile *file, char *name) {
-    if (!file) return 0;
-    std::string str = reinterpret_cast<mdf::MdfFile*>(file)->Name();
-    if (name) {
-        strcpy(name, str.c_str());
+EXPORT size_t MdfFileGetName(const MdfFile* file, char* name, size_t max_length) {
+    const std::string& file_name = file->Name();
+    size_t copy_length = std::min(file_name.length(), max_length - 1);
+    if (name && max_length > 0) {
+        std::memcpy(name, file_name.c_str(), copy_length);
+        name[copy_length] = '\0';
     }
-    return str.length();
+    return file_name.length();
 }
 
-void MdfFileSetName(MdfFile *file, const char *name) {
-    if (!file) return;
-    reinterpret_cast<mdf::MdfFile*>(file)->Name(name);
+EXPORT void MdfFileSetName(MdfFile* file, const char* name) {
+    file->Name(name);
 }
 
-size_t MdfFileGetFileName(MdfFile *file, char *filename) {
-    if (!file) return 0;
-    std::string str = reinterpret_cast<mdf::MdfFile*>(file)->FileName();
-    if (filename) {
-        strcpy(filename, str.c_str());
+EXPORT size_t MdfFileGetFileName(const MdfFile* file, char* filename, size_t max_length) {
+    const std::string& file_name = file->FileName();
+    size_t copy_length = std::min(file_name.length(), max_length - 1);
+    if (filename && max_length > 0) {
+        std::memcpy(filename, file_name.c_str(), copy_length);
+        filename[copy_length] = '\0';
     }
-    return str.length();
+    return file_name.length();
 }
 
-void MdfFileSetFileName(MdfFile *file, const char *filename) {
-    if (!file) return;
-    reinterpret_cast<mdf::MdfFile*>(file)->FileName(filename);
+EXPORT void MdfFileSetFileName(MdfFile* file, const char* filename) {
+    file->FileName(filename);
 }
 
-size_t MdfFileGetVersion(MdfFile *file, char *version) {
-    if (!file) return 0;
-    std::string str = reinterpret_cast<mdf::MdfFile*>(file)->Version();
-    if (version) {
-        strcpy(version, str.c_str());
+EXPORT size_t MdfFileGetVersion(const MdfFile* file, char* version, size_t max_length) {
+    const std::string& ver = file->Version();
+    size_t copy_length = std::min(ver.length(), max_length - 1);
+    if (version && max_length > 0) {
+        std::memcpy(version, ver.c_str(), copy_length);
+        version[copy_length] = '\0';
     }
-    return str.length();
+    return ver.length();
 }
 
-int MdfFileGetMainVersion(MdfFile *file) {
-    if (!file) return 0;
-    return reinterpret_cast<mdf::MdfFile*>(file)->MainVersion();
+EXPORT int MdfFileGetMainVersion(const MdfFile* file) {
+    return file->MainVersion();
 }
 
-int MdfFileGetMinorVersion(MdfFile *file) {
-    if (!file) return 0;
-    return reinterpret_cast<mdf::MdfFile*>(file)->MinorVersion();
+EXPORT int MdfFileGetMinorVersion(const MdfFile* file) {
+    return file->MinorVersion();
 }
 
-void MdfFileSetMinorVersion(MdfFile *file, int minor) {
-    if (!file) return;
-    reinterpret_cast<mdf::MdfFile*>(file)->MinorVersion(minor);
+EXPORT void MdfFileSetMinorVersion(MdfFile* file, int minor) {
+    file->MinorVersion(minor);
 }
 
-size_t MdfFileGetProgramId(MdfFile *file, char *program_id) {
-    if (!file) return 0;
-    std::string str = reinterpret_cast<mdf::MdfFile*>(file)->ProgramId();
-    if (program_id) {
-        strcpy(program_id, str.c_str());
+EXPORT const IHeader* MdfFileGetHeader(const MdfFile* file) {
+    return file->Header();
+}
+
+EXPORT bool MdfFileGetIsMdf4(const MdfFile* file) {
+    return file->IsMdf4();
+}
+
+EXPORT size_t MdfFileGetDataGroupCount(const MdfFile* file) {
+    DataGroupList groups;
+    file->DataGroups(groups);
+    return groups.size();
+}
+
+EXPORT const IDataGroup* MdfFileGetDataGroupByIndex(const MdfFile* file, size_t index) {
+    DataGroupList groups;
+    file->DataGroups(groups);
+    if (index >= groups.size()) return nullptr;
+    return groups[index];
+}
+
+EXPORT IDataGroup* MdfFileCreateDataGroup(MdfFile* file) {
+    return file->CreateDataGroup();
+}
+
+// IDataGroup functions
+EXPORT uint64_t DataGroupGetIndex(const IDataGroup* group) {
+    return group->Index();
+}
+
+EXPORT size_t DataGroupGetDescription(const IDataGroup* group, char* description, size_t max_length) {
+    const std::string& desc = group->Description();
+    size_t copy_length = std::min(desc.length(), max_length - 1);
+    if (description && max_length > 0) {
+        std::memcpy(description, desc.c_str(), copy_length);
+        description[copy_length] = '\0';
     }
-    return str.length();
+    return desc.length();
 }
 
-void MdfFileSetProgramId(MdfFile *file, const char *program_id) {
-    if (!file) return;
-    reinterpret_cast<mdf::MdfFile*>(file)->ProgramId(program_id);
+EXPORT void DataGroupSetDescription(IDataGroup* group, const char* description) {
+    group->Description(description);
 }
 
-bool MdfFileGetFinalized(MdfFile *file, uint16_t *standard_flags, uint16_t *custom_flags) {
-    if (!file || !standard_flags || !custom_flags) return false;
-    return reinterpret_cast<mdf::MdfFile*>(file)->GetFinalized(*standard_flags, *custom_flags);
+EXPORT size_t DataGroupGetChannelGroupCount(const IDataGroup* group) {
+    const auto& channel_groups = group->ChannelGroups();
+    return channel_groups.size();
 }
 
-const IHeader *MdfFileGetHeader(MdfFile *file) {
-    if (!file) return nullptr;
-    return reinterpret_cast<const IHeader*>(reinterpret_cast<const mdf::MdfFile*>(file)->Header());
+EXPORT const IChannelGroup* DataGroupGetChannelGroupByIndex(const IDataGroup* group, size_t index) {
+    const auto& channel_groups = group->ChannelGroups();
+    if (index >= channel_groups.size()) return nullptr;
+    return channel_groups[index];
 }
 
-bool MdfFileGetIsMdf4(MdfFile *file) {
-    if (!file) return false;
-    return reinterpret_cast<mdf::MdfFile*>(file)->IsMdf4();
+EXPORT IChannelGroup* DataGroupCreateChannelGroup(IDataGroup* group) {
+    return group->CreateChannelGroup();
 }
 
-size_t MdfFileGetAttachments(MdfFile *file, const IAttachment **pAttachment) {
-    if (!file) return 0;
-    auto attachments = reinterpret_cast<mdf::MdfFile*>(file)->Attachments();
-    if (pAttachment) {
-        for (size_t i = 0; i < attachments.size(); ++i) {
-            pAttachment[i] = reinterpret_cast<const IAttachment*>(attachments[i]);
-        }
+// IChannelGroup functions
+EXPORT uint64_t ChannelGroupGetIndex(const IChannelGroup* group) {
+    return group->Index();
+}
+
+EXPORT size_t ChannelGroupGetName(const IChannelGroup* group, char* name, size_t max_length) {
+    const std::string& group_name = group->Name();
+    size_t copy_length = std::min(group_name.length(), max_length - 1);
+    if (name && max_length > 0) {
+        std::memcpy(name, group_name.c_str(), copy_length);
+        name[copy_length] = '\0';
     }
-    return attachments.size();
+    return group_name.length();
 }
 
-size_t MdfFileGetDataGroups(MdfFile *file, const IDataGroup **pDataGroup) {
-    if (!file) return 0;
-    auto data_groups = reinterpret_cast<mdf::MdfFile*>(file)->DataGroups();
-    if (pDataGroup) {
-        for (size_t i = 0; i < data_groups.size(); ++i) {
-            pDataGroup[i] = reinterpret_cast<const IDataGroup*>(data_groups[i]);
-        }
+EXPORT void ChannelGroupSetName(IChannelGroup* group, const char* name) {
+    group->Name(name);
+}
+
+EXPORT size_t ChannelGroupGetDescription(const IChannelGroup* group, char* description, size_t max_length) {
+    const std::string& desc = group->Description();
+    size_t copy_length = std::min(desc.length(), max_length - 1);
+    if (description && max_length > 0) {
+        std::memcpy(description, desc.c_str(), copy_length);
+        description[copy_length] = '\0';
     }
-    return data_groups.size();
+    return desc.length();
 }
 
-IAttachment *MdfFileCreateAttachment(MdfFile *file) {
-    if (!file) return nullptr;
-    return reinterpret_cast<IAttachment*>(reinterpret_cast<mdf::MdfFile*>(file)->CreateAttachment());
+EXPORT void ChannelGroupSetDescription(IChannelGroup* group, const char* description) {
+    group->Description(description);
 }
 
-IDataGroup *MdfFileCreateDataGroup(MdfFile *file) {
-    if (!file) return nullptr;
-    return reinterpret_cast<IDataGroup*>(reinterpret_cast<mdf::MdfFile*>(file)->CreateDataGroup());
+EXPORT uint64_t ChannelGroupGetNofSamples(const IChannelGroup* group) {
+    return group->NofSamples();
+}
+
+EXPORT void ChannelGroupSetNofSamples(IChannelGroup* group, uint64_t samples) {
+    group->NofSamples(samples);
+}
+
+EXPORT size_t ChannelGroupGetChannelCount(const IChannelGroup* group) {
+    const auto& channels = group->Channels();
+    return channels.size();
+}
+
+EXPORT const IChannel* ChannelGroupGetChannelByIndex(const IChannelGroup* group, size_t index) {
+    const auto& channels = group->Channels();
+    if (index >= channels.size()) return nullptr;
+    return channels[index];
+}
+
+EXPORT IChannel* ChannelGroupCreateChannel(IChannelGroup* group) {
+    return group->CreateChannel();
+}
+
+// IChannel functions
+EXPORT uint64_t ChannelGetIndex(const IChannel* channel) {
+    return channel->Index();
+}
+
+EXPORT size_t ChannelGetName(const IChannel* channel, char* name, size_t max_length) {
+    const std::string& channel_name = channel->Name();
+    size_t copy_length = std::min(channel_name.length(), max_length - 1);
+    if (name && max_length > 0) {
+        std::memcpy(name, channel_name.c_str(), copy_length);
+        name[copy_length] = '\0';
+    }
+    return channel_name.length();
+}
+
+EXPORT void ChannelSetName(IChannel* channel, const char* name) {
+    channel->Name(name);
+}
+
+EXPORT size_t ChannelGetDisplayName(const IChannel* channel, char* display_name, size_t max_length) {
+    const std::string& name = channel->DisplayName();
+    size_t copy_length = std::min(name.length(), max_length - 1);
+    if (display_name && max_length > 0) {
+        std::memcpy(display_name, name.c_str(), copy_length);
+        display_name[copy_length] = '\0';
+    }
+    return name.length();
+}
+
+EXPORT void ChannelSetDisplayName(IChannel* channel, const char* display_name) {
+    channel->DisplayName(display_name);
+}
+
+EXPORT size_t ChannelGetDescription(const IChannel* channel, char* description, size_t max_length) {
+    const std::string& desc = channel->Description();
+    size_t copy_length = std::min(desc.length(), max_length - 1);
+    if (description && max_length > 0) {
+        std::memcpy(description, desc.c_str(), copy_length);
+        description[copy_length] = '\0';
+    }
+    return desc.length();
+}
+
+EXPORT void ChannelSetDescription(IChannel* channel, const char* description) {
+    channel->Description(description);
+}
+
+EXPORT size_t ChannelGetUnit(const IChannel* channel, char* unit, size_t max_length) {
+    const std::string& unit_str = channel->Unit();
+    size_t copy_length = std::min(unit_str.length(), max_length - 1);
+    if (unit && max_length > 0) {
+        std::memcpy(unit, unit_str.c_str(), copy_length);
+        unit[copy_length] = '\0';
+    }
+    return unit_str.length();
+}
+
+EXPORT void ChannelSetUnit(IChannel* channel, const char* unit) {
+    channel->Unit(unit);
+}
+
+EXPORT uint8_t ChannelGetType(const IChannel* channel) {
+    return static_cast<uint8_t>(channel->Type());
+}
+
+EXPORT void ChannelSetType(IChannel* channel, uint8_t type) {
+    channel->Type(static_cast<ChannelType>(type));
+}
+
+EXPORT uint8_t ChannelGetDataType(const IChannel* channel) {
+    return static_cast<uint8_t>(channel->DataType());
+}
+
+EXPORT void ChannelSetDataType(IChannel* channel, uint8_t data_type) {
+    channel->DataType(static_cast<ChannelDataType>(data_type));
+}
+
+EXPORT uint64_t ChannelGetDataBytes(const IChannel* channel) {
+    return channel->DataBytes();
+}
+
+EXPORT void ChannelSetDataBytes(IChannel* channel, uint64_t bytes) {
+    channel->DataBytes(bytes);
+}
+
+EXPORT void ChannelSetChannelValue(IChannel* channel, uint32_t value, bool valid) {
+    if (channel) {
+        channel->SetChannelValue(value, valid);
+    }
 }
 
 // CanMessage functions
-CanMessage *CanMessageInit(void) {
-    return reinterpret_cast<CanMessage*>(new mdf::CanMessage());
+EXPORT CanMessage* CanMessageInit() {
+    return new CanMessage;
 }
 
-void CanMessageUnInit(CanMessage *can) {
-    delete reinterpret_cast<mdf::CanMessage*>(can);
+EXPORT void CanMessageUnInit(CanMessage* can) {
+    delete can;
 }
 
-uint32_t CanMessageGetMessageId(CanMessage *can) {
-    if (!can) return 0;
-    return reinterpret_cast<mdf::CanMessage*>(can)->MessageId();
+EXPORT uint32_t CanMessageGetMessageId(CanMessage* can) {
+    return can->MessageId();
 }
 
-void CanMessageSetMessageId(CanMessage *can, uint32_t msgId) {
-    if (!can) return;
-    reinterpret_cast<mdf::CanMessage*>(can)->MessageId(msgId);
+EXPORT void CanMessageSetMessageId(CanMessage* can, uint32_t msgId) {
+    can->MessageId(msgId);
 }
 
-uint32_t CanMessageGetCanId(CanMessage *can) {
-    if (!can) return 0;
-    return reinterpret_cast<mdf::CanMessage*>(can)->CanId();
+EXPORT uint32_t CanMessageGetCanId(CanMessage* can) {
+    return can->CanId();
 }
 
-bool CanMessageGetExtendedId(CanMessage *can) {
-    if (!can) return false;
-    return reinterpret_cast<mdf::CanMessage*>(can)->ExtendedId();
+EXPORT bool CanMessageGetExtendedId(CanMessage* can) {
+    return can->ExtendedId();
 }
 
-void CanMessageSetExtendedId(CanMessage *can, bool extendedId) {
-    if (!can) return;
-    reinterpret_cast<mdf::CanMessage*>(can)->ExtendedId(extendedId);
+EXPORT void CanMessageSetExtendedId(CanMessage* can, bool extendedId) {
+    can->ExtendedId(extendedId);
 }
 
-uint8_t CanMessageGetDlc(CanMessage *can) {
-    if (!can) return 0;
-    return reinterpret_cast<mdf::CanMessage*>(can)->Dlc();
+EXPORT uint8_t CanMessageGetDlc(CanMessage* can) {
+    return can->Dlc();
 }
 
-void CanMessageSetDlc(CanMessage *can, uint8_t dlc) {
-    if (!can) return;
-    reinterpret_cast<mdf::CanMessage*>(can)->Dlc(dlc);
+EXPORT void CanMessageSetDlc(CanMessage* can, uint8_t dlc) {
+    can->Dlc(dlc);
 }
 
-size_t CanMessageGetDataLength(CanMessage *can) {
-    if (!can) return 0;
-    return reinterpret_cast<mdf::CanMessage*>(can)->DataLength();
+EXPORT size_t CanMessageGetDataLength(CanMessage* can) {
+    return can->DataLength();
 }
 
-void CanMessageSetDataLength(CanMessage *can, uint32_t dataLength) {
-    if (!can) return;
-    reinterpret_cast<mdf::CanMessage*>(can)->DataLength(dataLength);
+EXPORT void CanMessageSetDataLength(CanMessage* can, uint32_t dataLength) {
+    can->DataLength(dataLength);
 }
 
-size_t CanMessageGetDataBytes(CanMessage *can, uint8_t *dataList) {
-    if (!can) return 0;
-    auto data = reinterpret_cast<mdf::CanMessage*>(can)->DataBytes();
-    if (dataList) {
-        memcpy(dataList, data.data(), data.size());
+EXPORT size_t CanMessageGetDataBytes(CanMessage* can, uint8_t* dataList, size_t max_length) {
+    const auto& data = can->DataBytes();
+    size_t copy_length = std::min(data.size(), max_length);
+    if (dataList && max_length > 0) {
+        std::memcpy(dataList, data.data(), copy_length);
     }
     return data.size();
 }
 
-void CanMessageSetDataBytes(CanMessage *can, const uint8_t *dataList, size_t size) {
-    if (!can) return;
-    reinterpret_cast<mdf::CanMessage*>(can)->DataBytes({dataList, dataList + size});
+EXPORT void CanMessageSetDataBytes(CanMessage* can, const uint8_t* dataList, size_t size) {
+    std::vector<uint8_t> data(dataList, dataList + size);
+    can->DataBytes(data);
 }
 
-}
+} // extern "C"
