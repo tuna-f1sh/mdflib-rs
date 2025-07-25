@@ -26,6 +26,7 @@ pub mod datagroup;
 pub mod error;
 pub mod header;
 pub mod reader;
+pub mod writer;
 
 pub use canmessage::CanMessage;
 pub use channel::Channel;

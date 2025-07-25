@@ -520,11 +520,9 @@ fn generate_bindings(manifest_dir: &Path, out_dir: &Path) {
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         // Configure enum handling to avoid name conflicts
         .default_enum_style(bindgen::EnumVariation::Rust {
-            non_exhaustive: false,
+            non_exhaustive: true,
         })
-        .prepend_enum_name(true) // This prefixes enum variants with the enum name
         .blocklist_type("std::.*") // Block all std types
-        // Generate useful derives
         .derive_debug(true)
         .derive_default(true)
         .derive_copy(true)
