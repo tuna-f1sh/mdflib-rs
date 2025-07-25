@@ -150,6 +150,30 @@ EXPORT uint64_t ChannelGetDataBytes(const IChannel* channel);
 EXPORT void ChannelSetDataBytes(IChannel* channel, uint64_t bytes);
 EXPORT void ChannelSetChannelValue(IChannel* channel, uint32_t value, bool valid);
 
+// IHeader functions
+EXPORT size_t IHeaderGetMeasurementId(const IHeader* header, char* id, size_t max_length);
+EXPORT void IHeaderSetMeasurementId(IHeader* header, const char* id);
+EXPORT size_t IHeaderGetRecorderId(const IHeader* header, char* id, size_t max_length);
+EXPORT void IHeaderSetRecorderId(IHeader* header, const char* id);
+EXPORT int64_t IHeaderGetRecorderIndex(const IHeader* header);
+EXPORT void IHeaderSetRecorderIndex(IHeader* header, int64_t index);
+EXPORT bool IHeaderGetStartAngle(const IHeader* header, double* angle);
+EXPORT void IHeaderSetStartAngle(IHeader* header, double angle);
+EXPORT bool IHeaderGetStartDistance(const IHeader* header, double* distance);
+EXPORT void IHeaderSetStartDistance(IHeader* header, double distance);
+EXPORT size_t IHeaderGetAuthor(const IHeader* header, char* author, size_t max_length);
+EXPORT void IHeaderSetAuthor(IHeader* header, const char* author);
+EXPORT size_t IHeaderGetDepartment(const IHeader* header, char* department, size_t max_length);
+EXPORT void IHeaderSetDepartment(IHeader* header, const char* department);
+EXPORT size_t IHeaderGetProject(const IHeader* header, char* project, size_t max_length);
+EXPORT void IHeaderSetProject(IHeader* header, const char* project);
+EXPORT size_t IHeaderGetSubject(const IHeader* header, char* subject, size_t max_length);
+EXPORT void IHeaderSetSubject(IHeader* header, const char* subject);
+EXPORT size_t IHeaderGetDescription(const IHeader* header, char* description, size_t max_length);
+EXPORT void IHeaderSetDescription(IHeader* header, const char* description);
+EXPORT uint64_t IHeaderGetStartTime(const IHeader* header);
+EXPORT void IHeaderSetStartTime(IHeader* header, uint64_t start_time);
+
 // CanMessage functions
 EXPORT CanMessage* CanMessageInit();
 EXPORT void CanMessageUnInit(CanMessage* can);

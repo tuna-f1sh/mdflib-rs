@@ -351,6 +351,145 @@ EXPORT IChannel* ChannelGroupCreateChannel(IChannelGroup* group) {
     return group->CreateChannel();
 }
 
+// IHeader functions
+EXPORT size_t IHeaderGetMeasurementId(const IHeader* header, char* id, size_t max_length) {
+    const std::string& measurement_id = header->MeasurementId();
+    size_t copy_length = std::min(measurement_id.length(), max_length - 1);
+    if (id && max_length > 0) {
+        std::memcpy(id, measurement_id.c_str(), copy_length);
+        id[copy_length] = '\0';
+    }
+    return measurement_id.length();
+}
+
+EXPORT void IHeaderSetMeasurementId(IHeader* header, const char* id) {
+    header->MeasurementId(id);
+}
+
+EXPORT size_t IHeaderGetRecorderId(const IHeader* header, char* id, size_t max_length) {
+    const std::string& recorder_id = header->RecorderId();
+    size_t copy_length = std::min(recorder_id.length(), max_length - 1);
+    if (id && max_length > 0) {
+        std::memcpy(id, recorder_id.c_str(), copy_length);
+        id[copy_length] = '\0';
+    }
+    return recorder_id.length();
+}
+
+EXPORT void IHeaderSetRecorderId(IHeader* header, const char* id) {
+    header->RecorderId(id);
+}
+
+EXPORT int64_t IHeaderGetRecorderIndex(const IHeader* header) {
+    return header->RecorderIndex();
+}
+
+EXPORT void IHeaderSetRecorderIndex(IHeader* header, int64_t index) {
+    header->RecorderIndex(index);
+}
+
+EXPORT bool IHeaderGetStartAngle(const IHeader* header, double* angle) {
+    if (header->StartAngle().has_value()) {
+        *angle = header->StartAngle().value();
+        return true;
+    }
+    return false;
+}
+
+EXPORT void IHeaderSetStartAngle(IHeader* header, double angle) {
+    header->StartAngle(angle);
+}
+
+EXPORT bool IHeaderGetStartDistance(const IHeader* header, double* distance) {
+    if (header->StartDistance().has_value()) {
+        *distance = header->StartDistance().value();
+        return true;
+    }
+    return false;
+}
+
+EXPORT void IHeaderSetStartDistance(IHeader* header, double distance) {
+    header->StartDistance(distance);
+}
+
+EXPORT size_t IHeaderGetAuthor(const IHeader* header, char* author, size_t max_length) {
+    const std::string& val = header->Author();
+    size_t copy_length = std::min(val.length(), max_length - 1);
+    if (author && max_length > 0) {
+        std::memcpy(author, val.c_str(), copy_length);
+        author[copy_length] = '\0';
+    }
+    return val.length();
+}
+
+EXPORT void IHeaderSetAuthor(IHeader* header, const char* author) {
+    header->Author(author);
+}
+
+EXPORT size_t IHeaderGetDepartment(const IHeader* header, char* department, size_t max_length) {
+    const std::string& val = header->Department();
+    size_t copy_length = std::min(val.length(), max_length - 1);
+    if (department && max_length > 0) {
+        std::memcpy(department, val.c_str(), copy_length);
+        department[copy_length] = '\0';
+    }
+    return val.length();
+}
+
+EXPORT void IHeaderSetDepartment(IHeader* header, const char* department) {
+    header->Department(department);
+}
+
+EXPORT size_t IHeaderGetProject(const IHeader* header, char* project, size_t max_length) {
+    const std::string& val = header->Project();
+    size_t copy_length = std::min(val.length(), max_length - 1);
+    if (project && max_length > 0) {
+        std::memcpy(project, val.c_str(), copy_length);
+        project[copy_length] = '\0';
+    }
+    return val.length();
+}
+
+EXPORT void IHeaderSetProject(IHeader* header, const char* project) {
+    header->Project(project);
+}
+
+EXPORT size_t IHeaderGetSubject(const IHeader* header, char* subject, size_t max_length) {
+    const std::string& val = header->Subject();
+    size_t copy_length = std::min(val.length(), max_length - 1);
+    if (subject && max_length > 0) {
+        std::memcpy(subject, val.c_str(), copy_length);
+        subject[copy_length] = '\0';
+    }
+    return val.length();
+}
+
+EXPORT void IHeaderSetSubject(IHeader* header, const char* subject) {
+    header->Subject(subject);
+}
+
+EXPORT size_t IHeaderGetDescription(const IHeader* header, char* description, size_t max_length) {
+    const std::string& val = header->Description();
+    size_t copy_length = std::min(val.length(), max_length - 1);
+    if (description && max_length > 0) {
+        std::memcpy(description, val.c_str(), copy_length);
+        description[copy_length] = '\0';
+    }
+    return val.length();
+}
+
+EXPORT void IHeaderSetDescription(IHeader* header, const char* description) {
+    header->Description(description);
+}
+
+EXPORT uint64_t IHeaderGetStartTime(const IHeader* header) {
+    return header->StartTime();
+}
+
+EXPORT void IHeaderSetStartTime(IHeader* header, uint64_t start_time) {
+    header->StartTime(start_time);
+}
+
 // IChannel functions
 EXPORT uint64_t ChannelGetIndex(const IChannel* channel) {
     return channel->Index();

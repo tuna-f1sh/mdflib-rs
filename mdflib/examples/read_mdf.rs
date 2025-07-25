@@ -31,6 +31,18 @@ fn main() -> Result<()> {
     reader.read_header()?;
     if let Some(header) = reader.get_header() {
         println!("Header: {header:?}");
+        let measurement_id = header.get_measurement_id();
+        println!("Measurement ID: {measurement_id}");
+        let recorder_id = header.get_recorder_id();
+        println!("Recorder ID: {recorder_id}");
+        let author = header.get_author();
+        let project = header.get_project();
+        let department = header.get_department();
+        println!("Author: {author}, Project: {project}, Department: {department}");
+        let description = header.get_description();
+        println!("Description: {description}");
+        let start_time = header.get_start_time();
+        println!("Start Time: {start_time}");
     }
 
     println!("Reading measurement info...");
