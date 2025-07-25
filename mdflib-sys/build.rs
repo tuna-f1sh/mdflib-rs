@@ -184,7 +184,7 @@ fn setup_zlib_dependency() {
             println!("cargo:rustc-link-search=native={}", path.display());
         }
         for lib in zlib.libs {
-            println!("cargo:rustc-link-lib={}", lib);
+            println!("cargo:rustc-link-lib={lib}");
         }
         return;
     }
@@ -203,12 +203,12 @@ fn setup_zlib_dependency() {
         if let Some(lib_name) = lib_path.file_stem() {
             let lib_name_str = lib_name.to_string_lossy();
             let clean_name = lib_name_str.strip_prefix("lib").unwrap_or(&lib_name_str);
-            println!("cargo:rustc-link-lib={}", clean_name);
+            println!("cargo:rustc-link-lib={clean_name}");
         }
 
         // Add include directory if provided
         if let Ok(zlib_include) = env::var("ZLIB_INCLUDE_DIR") {
-            println!("cargo:include={}", zlib_include);
+            println!("cargo:include={zlib_include}");
         }
         return;
     }
@@ -226,7 +226,7 @@ fn setup_expat_dependency() {
             println!("cargo:rustc-link-search=native={}", path.display());
         }
         for lib in expat.libs {
-            println!("cargo:rustc-link-lib={}", lib);
+            println!("cargo:rustc-link-lib={lib}");
         }
         return;
     }
@@ -245,12 +245,12 @@ fn setup_expat_dependency() {
         if let Some(lib_name) = lib_path.file_stem() {
             let lib_name_str = lib_name.to_string_lossy();
             let clean_name = lib_name_str.strip_prefix("lib").unwrap_or(&lib_name_str);
-            println!("cargo:rustc-link-lib={}", clean_name);
+            println!("cargo:rustc-link-lib={clean_name}");
         }
 
         // Add include directory if provided
         if let Ok(expat_include) = env::var("EXPAT_INCLUDE_DIR") {
-            println!("cargo:include={}", expat_include);
+            println!("cargo:include={expat_include}");
         }
         return;
     }
@@ -281,11 +281,11 @@ fn add_dependency_hints(cmake_config: &mut Command) {
                 cmake_config.arg(format!("-DZLIB_ROOT={}", root_dir.display()));
             }
         }
-        cmake_config.arg(format!("-DZLIB_LIBRARY={}", zlib_lib));
+        cmake_config.arg(format!("-DZLIB_LIBRARY={zlib_lib}"));
     }
 
     if let Ok(zlib_include) = env::var("ZLIB_INCLUDE_DIR") {
-        cmake_config.arg(format!("-DZLIB_INCLUDE_DIR={}", zlib_include));
+        cmake_config.arg(format!("-DZLIB_INCLUDE_DIR={zlib_include}"));
     }
 
     if let Ok(expat_lib) = env::var("EXPAT_LIBRARY") {
@@ -295,11 +295,11 @@ fn add_dependency_hints(cmake_config: &mut Command) {
                 cmake_config.arg(format!("-DEXPAT_ROOT={}", root_dir.display()));
             }
         }
-        cmake_config.arg(format!("-DEXPAT_LIBRARY={}", expat_lib));
+        cmake_config.arg(format!("-DEXPAT_LIBRARY={expat_lib}"));
     }
 
     if let Ok(expat_include) = env::var("EXPAT_INCLUDE_DIR") {
-        cmake_config.arg(format!("-I{}", expat_include));
+        cmake_config.arg(format!("-I{expat_include}"));
     }
 
     // If no environment variables, fall back to platform-specific discovery
@@ -415,7 +415,7 @@ fn setup_system_linking() {
             println!("cargo:rustc-link-search=native={}", path.display());
         }
         for lib in library.libs {
-            println!("cargo:rustc-link-lib={}", lib);
+            println!("cargo:rustc-link-lib={lib}");
         }
 
         // Set include paths for bindgen
@@ -507,11 +507,11 @@ fn generate_bindings(manifest_dir: &Path, out_dir: &Path) {
 
     // Add dependency include paths
     if let Ok(zlib_include) = env::var("ZLIB_INCLUDE_DIR") {
-        bindgen_builder = bindgen_builder.clang_arg(format!("-I{}", zlib_include));
+        bindgen_builder = bindgen_builder.clang_arg(format!("-I{zlib_include}"));
     }
 
     if let Ok(expat_include) = env::var("EXPAT_INCLUDE_DIR") {
-        bindgen_builder = bindgen_builder.clang_arg(format!("-I{}", expat_include));
+        bindgen_builder = bindgen_builder.clang_arg(format!("-I{expat_include}"));
     }
 
     let bindings = bindgen_builder
