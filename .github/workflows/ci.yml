@@ -13,10 +13,6 @@ jobs:
       CARGO_TERM_COLOR: always
     runs-on: ubuntu-latest
     steps:
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libz-dev libexpat1-dev build-essential cmake
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
