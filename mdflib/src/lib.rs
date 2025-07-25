@@ -29,6 +29,16 @@ pub mod header;
 pub mod reader;
 pub mod writer;
 
+// New MDF object modules
+pub mod etag;
+pub mod metadata;
+pub mod sourceinformation;
+pub mod attachment;
+pub mod event;
+pub mod filehistory;
+pub mod channelarray;
+pub mod channelconversion;
+
 pub use canmessage::CanMessage;
 pub use channel::{Channel, ChannelRef};
 pub use channelgroup::{ChannelGroup, ChannelGroupRef};
@@ -37,6 +47,16 @@ pub use error::{MdfError, Result};
 pub use file::{MdfFile, MdfFileRef};
 pub use header::{MdfHeader, MdfHeaderRef};
 pub use reader::MdfReader;
+
+// Re-export new MDF object types
+pub use etag::{ETag, ETagRef};
+pub use metadata::{MetaData, MetaDataRef};
+pub use sourceinformation::{SourceInformation, SourceInformationRef};
+pub use attachment::{Attachment, AttachmentRef};
+pub use event::{Event, EventRef};
+pub use filehistory::{FileHistory, FileHistoryRef};
+pub use channelarray::{ChannelArray, ChannelArrayRef};
+pub use channelconversion::{ChannelConversion, ChannelConversionRef};
 
 #[cfg(test)]
 mod tests {}

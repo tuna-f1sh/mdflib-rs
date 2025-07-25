@@ -18,6 +18,7 @@
 #include <mdf/isourceinformation.h>
 #include <mdf/iattachment.h>
 #include <mdf/imetadata.h>
+#include <mdf/etag.h>
 
 using namespace mdf;
 
@@ -638,6 +639,732 @@ EXPORT size_t CanMessageGetDataBytes(CanMessage* can, uint8_t* dataList, size_t 
 EXPORT void CanMessageSetDataBytes(CanMessage* can, const uint8_t* dataList, size_t size) {
     std::vector<uint8_t> data(dataList, dataList + size);
     can->DataBytes(data);
+}
+
+// ISourceInformation functions
+EXPORT uint64_t SourceInformationGetIndex(const ISourceInformation* source) {
+    return source->Index();
+}
+
+EXPORT size_t SourceInformationGetName(const ISourceInformation* source, char* name, size_t max_length) {
+    const auto& str = source->Name();
+    if (name && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(name, str.c_str(), copy_len);
+        name[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void SourceInformationSetName(ISourceInformation* source, const char* name) {
+    source->Name(name ? name : "");
+}
+
+EXPORT size_t SourceInformationGetDescription(const ISourceInformation* source, char* description, size_t max_length) {
+    const auto& str = source->Description();
+    if (description && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(description, str.c_str(), copy_len);
+        description[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void SourceInformationSetDescription(ISourceInformation* source, const char* description) {
+    source->Description(description ? description : "");
+}
+
+EXPORT size_t SourceInformationGetPath(const ISourceInformation* source, char* path, size_t max_length) {
+    const auto& str = source->Path();
+    if (path && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(path, str.c_str(), copy_len);
+        path[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void SourceInformationSetPath(ISourceInformation* source, const char* path) {
+    source->Path(path ? path : "");
+}
+
+EXPORT uint8_t SourceInformationGetType(const ISourceInformation* source) {
+    return static_cast<uint8_t>(source->Type());
+}
+
+EXPORT void SourceInformationSetType(ISourceInformation* source, uint8_t type) {
+    source->Type(static_cast<SourceType>(type));
+}
+
+EXPORT uint8_t SourceInformationGetBus(const ISourceInformation* source) {
+    return static_cast<uint8_t>(source->Bus());
+}
+
+EXPORT void SourceInformationSetBus(ISourceInformation* source, uint8_t bus) {
+    source->Bus(static_cast<BusType>(bus));
+}
+
+EXPORT uint8_t SourceInformationGetFlags(const ISourceInformation* source) {
+    return source->Flags();
+}
+
+EXPORT void SourceInformationSetFlags(ISourceInformation* source, uint8_t flags) {
+    source->Flags(flags);
+}
+
+EXPORT const IMetaData* SourceInformationGetMetaData(const ISourceInformation* source) {
+    return source->MetaData();
+}
+
+EXPORT IMetaData* SourceInformationCreateMetaData(ISourceInformation* source) {
+    return source->CreateMetaData();
+}
+
+// IAttachment functions
+EXPORT uint64_t AttachmentGetIndex(const IAttachment* attachment) {
+    return attachment->Index();
+}
+
+EXPORT uint16_t AttachmentGetCreatorIndex(const IAttachment* attachment) {
+    return attachment->CreatorIndex();
+}
+
+EXPORT void AttachmentSetCreatorIndex(IAttachment* attachment, uint16_t index) {
+    attachment->CreatorIndex(index);
+}
+
+EXPORT bool AttachmentGetEmbedded(const IAttachment* attachment) {
+    return attachment->IsEmbedded();
+}
+
+EXPORT void AttachmentSetEmbedded(IAttachment* attachment, bool embedded) {
+    attachment->IsEmbedded(embedded);
+}
+
+EXPORT bool AttachmentGetCompressed(const IAttachment* attachment) {
+    return attachment->IsCompressed();
+}
+
+EXPORT void AttachmentSetCompressed(IAttachment* attachment, bool compressed) {
+    attachment->IsCompressed(compressed);
+}
+
+EXPORT bool AttachmentGetMd5(const IAttachment* attachment, char* md5, size_t max_length) {
+    auto md5_opt = attachment->Md5();
+    if (md5_opt.has_value() && md5 && max_length > 0) {
+        const auto& md5_str = md5_opt.value();
+        size_t copy_len = std::min(md5_str.size(), max_length - 1);
+        std::memcpy(md5, md5_str.c_str(), copy_len);
+        md5[copy_len] = '\0';
+        return true;
+    }
+    return false;
+}
+
+EXPORT size_t AttachmentGetFileName(const IAttachment* attachment, char* name, size_t max_length) {
+    const auto& str = attachment->FileName();
+    if (name && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(name, str.c_str(), copy_len);
+        name[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void AttachmentSetFileName(IAttachment* attachment, const char* name) {
+    attachment->FileName(name ? name : "");
+}
+
+EXPORT size_t AttachmentGetFileType(const IAttachment* attachment, char* type, size_t max_length) {
+    const auto& str = attachment->FileType();
+    if (type && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(type, str.c_str(), copy_len);
+        type[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void AttachmentSetFileType(IAttachment* attachment, const char* type) {
+    attachment->FileType(type ? type : "");
+}
+
+EXPORT const IMetaData* AttachmentGetMetaData(const IAttachment* attachment) {
+    return attachment->MetaData();
+}
+
+EXPORT IMetaData* AttachmentCreateMetaData(IAttachment* attachment) {
+    return attachment->CreateMetaData();
+}
+
+// IEvent functions
+EXPORT uint64_t EventGetIndex(const IEvent* event) {
+    return event->Index();
+}
+
+EXPORT size_t EventGetName(const IEvent* event, char* name, size_t max_length) {
+    const auto& str = event->Name();
+    if (name && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(name, str.c_str(), copy_len);
+        name[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void EventSetName(IEvent* event, const char* name) {
+    event->Name(name ? name : "");
+}
+
+EXPORT size_t EventGetDescription(const IEvent* event, char* description, size_t max_length) {
+    const auto& str = event->Description();
+    if (description && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(description, str.c_str(), copy_len);
+        description[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void EventSetDescription(IEvent* event, const char* description) {
+    event->Description(description ? description : "");
+}
+
+EXPORT size_t EventGetGroupName(const IEvent* event, char* group, size_t max_length) {
+    const auto& str = event->GroupName();
+    if (group && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(group, str.c_str(), copy_len);
+        group[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void EventSetGroupName(IEvent* event, const char* group) {
+    event->GroupName(group ? group : "");
+}
+
+EXPORT uint8_t EventGetType(const IEvent* event) {
+    return static_cast<uint8_t>(event->Type());
+}
+
+EXPORT void EventSetType(IEvent* event, uint8_t type) {
+    event->Type(static_cast<EventType>(type));
+}
+
+EXPORT uint8_t EventGetSync(const IEvent* event) {
+    return static_cast<uint8_t>(event->Sync());
+}
+
+EXPORT void EventSetSync(IEvent* event, uint8_t type) {
+    event->Sync(static_cast<SyncType>(type));
+}
+
+EXPORT uint8_t EventGetRange(const IEvent* event) {
+    return static_cast<uint8_t>(event->Range());
+}
+
+EXPORT void EventSetRange(IEvent* event, uint8_t type) {
+    event->Range(static_cast<RangeType>(type));
+}
+
+EXPORT uint8_t EventGetCause(const IEvent* event) {
+    return static_cast<uint8_t>(event->Cause());
+}
+
+EXPORT void EventSetCause(IEvent* event, uint8_t cause) {
+    event->Cause(static_cast<EventCause>(cause));
+}
+
+EXPORT uint16_t EventGetCreatorIndex(const IEvent* event) {
+    return event->CreatorIndex();
+}
+
+EXPORT void EventSetCreatorIndex(IEvent* event, uint16_t index) {
+    event->CreatorIndex(index);
+}
+
+EXPORT int64_t EventGetSyncValue(const IEvent* event) {
+    return event->SyncValue();
+}
+
+EXPORT void EventSetSyncValue(IEvent* event, int64_t value) {
+    event->SyncValue(value);
+}
+
+EXPORT double EventGetSyncFactor(const IEvent* event) {
+    return event->SyncFactor();
+}
+
+EXPORT void EventSetSyncFactor(IEvent* event, double factor) {
+    event->SyncFactor(factor);
+}
+
+EXPORT double EventGetPreTrig(const IEvent* event) {
+    return event->PreTrig();
+}
+
+EXPORT void EventSetPreTrig(IEvent* event, double time) {
+    event->PreTrig(time);
+}
+
+EXPORT double EventGetPostTrig(const IEvent* event) {
+    return event->PostTrig();
+}
+
+EXPORT void EventSetPostTrig(IEvent* event, double time) {
+    event->PostTrig(time);
+}
+
+EXPORT const IMetaData* EventGetMetaData(const IEvent* event) {
+    return event->MetaData();
+}
+
+// IFileHistory functions
+EXPORT uint64_t FileHistoryGetIndex(const IFileHistory* file_history) {
+    return file_history->Index();
+}
+
+EXPORT uint64_t FileHistoryGetTime(const IFileHistory* file_history) {
+    return file_history->Time();
+}
+
+EXPORT void FileHistorySetTime(IFileHistory* file_history, uint64_t time) {
+    file_history->Time(time);
+}
+
+EXPORT const IMetaData* FileHistoryGetMetaData(const IFileHistory* file_history) {
+    return file_history->MetaData();
+}
+
+EXPORT size_t FileHistoryGetDescription(const IFileHistory* file_history, char* desc, size_t max_length) {
+    const auto& str = file_history->Description();
+    if (desc && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(desc, str.c_str(), copy_len);
+        desc[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void FileHistorySetDescription(IFileHistory* file_history, const char* desc) {
+    file_history->Description(desc ? desc : "");
+}
+
+EXPORT size_t FileHistoryGetToolName(const IFileHistory* file_history, char* name, size_t max_length) {
+    const auto& str = file_history->ToolName();
+    if (name && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(name, str.c_str(), copy_len);
+        name[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void FileHistorySetToolName(IFileHistory* file_history, const char* name) {
+    file_history->ToolName(name ? name : "");
+}
+
+EXPORT size_t FileHistoryGetToolVendor(const IFileHistory* file_history, char* vendor, size_t max_length) {
+    const auto& str = file_history->ToolVendor();
+    if (vendor && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(vendor, str.c_str(), copy_len);
+        vendor[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void FileHistorySetToolVendor(IFileHistory* file_history, const char* vendor) {
+    file_history->ToolVendor(vendor ? vendor : "");
+}
+
+EXPORT size_t FileHistoryGetToolVersion(const IFileHistory* file_history, char* version, size_t max_length) {
+    const auto& str = file_history->ToolVersion();
+    if (version && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(version, str.c_str(), copy_len);
+        version[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void FileHistorySetToolVersion(IFileHistory* file_history, const char* version) {
+    file_history->ToolVersion(version ? version : "");
+}
+
+EXPORT size_t FileHistoryGetUserName(const IFileHistory* file_history, char* user, size_t max_length) {
+    const auto& str = file_history->UserName();
+    if (user && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(user, str.c_str(), copy_len);
+        user[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void FileHistorySetUserName(IFileHistory* file_history, const char* user) {
+    file_history->UserName(user ? user : "");
+}
+
+// IMetaData functions
+EXPORT size_t MetaDataGetPropertyAsString(const IMetaData* metadata, const char* index, char* prop, size_t max_length) {
+    std::string prop_str = metadata->StringProperty(index);
+    if (prop && max_length > 0) {
+        size_t copy_len = std::min(prop_str.size(), max_length - 1);
+        std::memcpy(prop, prop_str.c_str(), copy_len);
+        prop[copy_len] = '\0';
+    }
+    return prop_str.size();
+}
+
+EXPORT void MetaDataSetPropertyAsString(IMetaData* metadata, const char* index, const char* prop) {
+    metadata->StringProperty(index, prop ? prop : "");
+}
+
+EXPORT double MetaDataGetPropertyAsFloat(const IMetaData* metadata, const char* index) {
+    return metadata->FloatProperty(index);
+}
+
+EXPORT void MetaDataSetPropertyAsFloat(IMetaData* metadata, const char* index, double prop) {
+    metadata->FloatProperty(index, prop);
+}
+
+EXPORT size_t MetaDataGetXmlSnippet(const IMetaData* metadata, char* xml, size_t max_length) {
+    const auto& str = metadata->XmlSnippet();
+    if (xml && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(xml, str.c_str(), copy_len);
+        xml[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void MetaDataSetXmlSnippet(IMetaData* metadata, const char* xml) {
+    metadata->XmlSnippet(xml ? xml : "");
+}
+
+// ETag functions
+EXPORT ETag* ETagInit() {
+    return new ETag();
+}
+
+EXPORT void ETagUnInit(ETag* etag) {
+    delete etag;
+}
+
+EXPORT size_t ETagGetName(const ETag* etag, char* name, size_t max_length) {
+    const auto& str = etag->Name();
+    if (name && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(name, str.c_str(), copy_len);
+        name[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ETagSetName(ETag* etag, const char* name) {
+    etag->Name(name ? name : "");
+}
+
+EXPORT size_t ETagGetDescription(const ETag* etag, char* desc, size_t max_length) {
+    const auto& str = etag->Description();
+    if (desc && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(desc, str.c_str(), copy_len);
+        desc[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ETagSetDescription(ETag* etag, const char* desc) {
+    etag->Description(desc ? desc : "");
+}
+
+EXPORT size_t ETagGetUnit(const ETag* etag, char* unit, size_t max_length) {
+    const auto& str = etag->Unit();
+    if (unit && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(unit, str.c_str(), copy_len);
+        unit[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ETagSetUnit(ETag* etag, const char* unit) {
+    etag->Unit(unit ? unit : "");
+}
+
+EXPORT size_t ETagGetUnitRef(const ETag* etag, char* unit, size_t max_length) {
+    const auto& str = etag->UnitRef();
+    if (unit && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(unit, str.c_str(), copy_len);
+        unit[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ETagSetUnitRef(ETag* etag, const char* unit) {
+    etag->UnitRef(unit ? unit : "");
+}
+
+EXPORT size_t ETagGetType(const ETag* etag, char* type, size_t max_length) {
+    const auto& str = etag->Type();
+    if (type && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(type, str.c_str(), copy_len);
+        type[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ETagSetType(ETag* etag, const char* type) {
+    etag->Type(type ? type : "");
+}
+
+EXPORT uint8_t ETagGetDataType(const ETag* etag) {
+    return static_cast<uint8_t>(etag->DataType());
+}
+
+EXPORT void ETagSetDataType(ETag* etag, uint8_t type) {
+    etag->DataType(static_cast<ETagDataType>(type));
+}
+
+EXPORT size_t ETagGetLanguage(const ETag* etag, char* language, size_t max_length) {
+    const auto& str = etag->Language();
+    if (language && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(language, str.c_str(), copy_len);
+        language[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ETagSetLanguage(ETag* etag, const char* language) {
+    etag->Language(language ? language : "");
+}
+
+EXPORT bool ETagGetReadOnly(const ETag* etag) {
+    return etag->ReadOnly();
+}
+
+EXPORT void ETagSetReadOnly(ETag* etag, bool read_only) {
+    etag->ReadOnly(read_only);
+}
+
+EXPORT size_t ETagGetValueAsString(const ETag* etag, char* value, size_t max_length) {
+    const auto str = etag->Value<std::string>();
+    if (value && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(value, str.c_str(), copy_len);
+        value[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ETagSetValueAsString(ETag* etag, const char* value) {
+    etag->Value(std::string(value ? value : ""));
+}
+
+EXPORT double ETagGetValueAsFloat(const ETag* etag) {
+    return etag->Value<double>();
+}
+
+EXPORT void ETagSetValueAsFloat(ETag* etag, double value) {
+    etag->Value(value);
+}
+
+EXPORT bool ETagGetValueAsBoolean(const ETag* etag) {
+    return etag->Value<bool>();
+}
+
+EXPORT void ETagSetValueAsBoolean(ETag* etag, bool value) {
+    etag->Value(value);
+}
+
+EXPORT int64_t ETagGetValueAsSigned(const ETag* etag) {
+    return etag->Value<int64_t>();
+}
+
+EXPORT void ETagSetValueAsSigned(ETag* etag, int64_t value) {
+    etag->Value(value);
+}
+
+EXPORT uint64_t ETagGetValueAsUnsigned(const ETag* etag) {
+    return etag->Value<uint64_t>();
+}
+
+EXPORT void ETagSetValueAsUnsigned(ETag* etag, uint64_t value) {
+    etag->Value(value);
+}
+
+// IChannelArray functions
+EXPORT uint64_t ChannelArrayGetIndex(const IChannelArray* array) {
+    return array->Index();
+}
+
+EXPORT uint8_t ChannelArrayGetType(const IChannelArray* array) {
+    return static_cast<uint8_t>(array->Type());
+}
+
+EXPORT void ChannelArraySetType(IChannelArray* array, uint8_t type) {
+    array->Type(static_cast<ArrayType>(type));
+}
+
+EXPORT uint8_t ChannelArrayGetStorage(const IChannelArray* array) {
+    return static_cast<uint8_t>(array->Storage());
+}
+
+EXPORT void ChannelArraySetStorage(IChannelArray* array, uint8_t storage) {
+    array->Storage(static_cast<ArrayStorage>(storage));
+}
+
+EXPORT uint32_t ChannelArrayGetFlags(const IChannelArray* array) {
+    return array->Flags();
+}
+
+EXPORT void ChannelArraySetFlags(IChannelArray* array, uint32_t flags) {
+    array->Flags(flags);
+}
+
+EXPORT uint64_t ChannelArrayGetNofElements(const IChannelArray* array) {
+    return array->Dimensions();
+}
+
+EXPORT void ChannelArraySetNofElements(IChannelArray* array, uint64_t elements) {
+    // Note: This is a simplified implementation
+    // The actual API requires setting dimension details using Shape()
+}
+
+// IChannelConversion functions
+EXPORT uint64_t ChannelConversionGetIndex(const IChannelConversion* conversion) {
+    return conversion->Index();
+}
+
+EXPORT size_t ChannelConversionGetName(const IChannelConversion* conversion, char* name, size_t max_length) {
+    const auto& str = conversion->Name();
+    if (name && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(name, str.c_str(), copy_len);
+        name[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ChannelConversionSetName(IChannelConversion* conversion, const char* name) {
+    conversion->Name(name ? name : "");
+}
+
+EXPORT size_t ChannelConversionGetDescription(const IChannelConversion* conversion, char* desc, size_t max_length) {
+    const auto& str = conversion->Description();
+    if (desc && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(desc, str.c_str(), copy_len);
+        desc[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ChannelConversionSetDescription(IChannelConversion* conversion, const char* desc) {
+    conversion->Description(desc ? desc : "");
+}
+
+EXPORT size_t ChannelConversionGetUnit(const IChannelConversion* conversion, char* unit, size_t max_length) {
+    const auto& str = conversion->Unit();
+    if (unit && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(unit, str.c_str(), copy_len);
+        unit[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ChannelConversionSetUnit(IChannelConversion* conversion, const char* unit) {
+    conversion->Unit(unit ? unit : "");
+}
+
+EXPORT uint8_t ChannelConversionGetType(const IChannelConversion* conversion) {
+    return static_cast<uint8_t>(conversion->Type());
+}
+
+EXPORT void ChannelConversionSetType(IChannelConversion* conversion, uint8_t type) {
+    conversion->Type(static_cast<ConversionType>(type));
+}
+
+EXPORT bool ChannelConversionIsPrecisionUsed(const IChannelConversion* conversion) {
+    return conversion->IsDecimalUsed();
+}
+
+EXPORT uint8_t ChannelConversionGetPrecision(const IChannelConversion* conversion) {
+    return conversion->Decimals();
+}
+
+EXPORT bool ChannelConversionIsRangeUsed(const IChannelConversion* conversion) {
+    auto range_opt = conversion->Range();
+    return range_opt.has_value();
+}
+
+EXPORT double ChannelConversionGetRangeMin(const IChannelConversion* conversion) {
+    auto range_opt = conversion->Range();
+    if (range_opt.has_value()) {
+        return range_opt.value().first;
+    }
+    return 0.0;
+}
+
+EXPORT double ChannelConversionGetRangeMax(const IChannelConversion* conversion) {
+    auto range_opt = conversion->Range();
+    if (range_opt.has_value()) {
+        return range_opt.value().second;
+    }
+    return 0.0;
+}
+
+EXPORT void ChannelConversionSetRange(IChannelConversion* conversion, double min, double max) {
+    conversion->Range(min, max);
+}
+
+EXPORT uint16_t ChannelConversionGetFlags(const IChannelConversion* conversion) {
+    return conversion->Flags();
+}
+
+EXPORT size_t ChannelConversionGetFormula(const IChannelConversion* conversion, char* formula, size_t max_length) {
+    const auto& str = conversion->Formula();
+    if (formula && max_length > 0) {
+        size_t copy_len = std::min(str.size(), max_length - 1);
+        std::memcpy(formula, str.c_str(), copy_len);
+        formula[copy_len] = '\0';
+    }
+    return str.size();
+}
+
+EXPORT void ChannelConversionSetFormula(IChannelConversion* conversion, const char* formula) {
+    conversion->Formula(formula ? formula : "");
+}
+
+EXPORT double ChannelConversionGetParameterAsDouble(const IChannelConversion* conversion, uint16_t index) {
+    return conversion->Parameter(index);
+}
+
+EXPORT void ChannelConversionSetParameterAsDouble(IChannelConversion* conversion, uint16_t index, double parameter) {
+    conversion->Parameter(index, parameter);
+}
+
+EXPORT uint64_t ChannelConversionGetParameterAsUInt64(const IChannelConversion* conversion, uint16_t index) {
+    return static_cast<uint64_t>(conversion->Parameter(index));
+}
+
+EXPORT void ChannelConversionSetParameterAsUInt64(IChannelConversion* conversion, uint16_t index, uint64_t parameter) {
+    conversion->Parameter(index, parameter);
+}
+
+EXPORT const IMetaData* ChannelConversionGetMetaData(const IChannelConversion* conversion) {
+    return conversion->MetaData();
+}
+
+EXPORT IMetaData* ChannelConversionCreateMetaData(IChannelConversion* conversion) {
+    return conversion->CreateMetaData();
 }
 
 } // extern "C"
