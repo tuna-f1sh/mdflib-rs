@@ -135,4 +135,3 @@ impl<'a> Deref for ChannelGroup<'a> {
         &self.inner_ref
     }
 }
-

@@ -24,19 +24,19 @@ pub mod channel;
 pub mod channelgroup;
 pub mod datagroup;
 pub mod error;
+pub mod file;
 pub mod header;
 pub mod reader;
 pub mod writer;
-pub mod file;
 
 pub use canmessage::CanMessage;
 pub use channel::{Channel, ChannelRef};
 pub use channelgroup::{ChannelGroup, ChannelGroupRef};
 pub use datagroup::{DataGroup, DataGroupRef};
 pub use error::{MdfError, Result};
+pub use file::{MdfFile, MdfFileRef};
 pub use header::{MdfHeader, MdfHeaderRef};
 pub use reader::MdfReader;
-pub use file::{MdfFile, MdfFileRef};
 
 #[cfg(test)]
 mod tests {}

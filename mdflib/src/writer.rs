@@ -183,4 +183,3 @@ mod tests {
         assert!(writer.is_ok());
     }
 }
-

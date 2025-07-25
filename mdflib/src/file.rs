@@ -100,4 +100,3 @@ impl Deref for MdfFile {
         &self.inner_ref
     }
 }
-
