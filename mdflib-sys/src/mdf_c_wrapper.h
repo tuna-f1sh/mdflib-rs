@@ -21,31 +21,32 @@ typedef struct CanMessage CanMessage;
 
 // Enums from mdflib
 typedef enum {
-    MdfWriterType_Mdf3,
-    MdfWriterType_Mdf4
+  MdfWriterType_Mdf3,
+  MdfWriterType_Mdf4,
+  MdfWriterType_BusLogger
 } MdfWriterType;
 
 typedef enum {
-    ChannelType_FixedLength = 0,
-    ChannelType_VariableLength = 1,
-    ChannelType_Master = 2,
-    ChannelType_VirtualMaster = 3,
-    ChannelType_Sync = 4,
-    ChannelType_MaxLength = 5,
-    ChannelType_VirtualData = 6
+  ChannelType_FixedLength = 0,
+  ChannelType_VariableLength = 1,
+  ChannelType_Master = 2,
+  ChannelType_VirtualMaster = 3,
+  ChannelType_Sync = 4,
+  ChannelType_MaxLength = 5,
+  ChannelType_VirtualData = 6
 } ChannelType;
 
 typedef enum {
-    ChannelDataType_UnsignedIntegerLe = 0,
-    ChannelDataType_UnsignedIntegerBe = 1,
-    ChannelDataType_SignedIntegerLe = 2,
-    ChannelDataType_SignedIntegerBe = 3,
-    ChannelDataType_FloatLe = 4,
-    ChannelDataType_FloatBe = 5,
-    ChannelDataType_String = 6,
-    ChannelDataType_ByteArray = 7,
-    ChannelDataType_CanOpenDate = 9,
-    ChannelDataType_CanOpenTime = 10
+  ChannelDataType_UnsignedIntegerLe = 0,
+  ChannelDataType_UnsignedIntegerBe = 1,
+  ChannelDataType_SignedIntegerLe = 2,
+  ChannelDataType_SignedIntegerBe = 3,
+  ChannelDataType_FloatLe = 4,
+  ChannelDataType_FloatBe = 5,
+  ChannelDataType_String = 6,
+  ChannelDataType_ByteArray = 7,
+  ChannelDataType_CanOpenDate = 9,
+  ChannelDataType_CanOpenTime = 10
 } ChannelDataType;
 
 

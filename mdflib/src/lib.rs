@@ -30,11 +30,11 @@ pub mod writer;
 pub mod file;
 
 pub use canmessage::CanMessage;
-pub use channel::Channel;
-pub use channelgroup::ChannelGroup;
-pub use datagroup::DataGroup;
+pub use channel::{Channel, ChannelRef};
+pub use channelgroup::{ChannelGroup, ChannelGroupRef};
+pub use datagroup::{DataGroup, DataGroupRef};
 pub use error::{MdfError, Result};
-pub use header::MdfHeader;
+pub use header::{MdfHeader, MdfHeaderRef};
 pub use reader::MdfReader;
 pub use file::{MdfFile, MdfFileRef};
 

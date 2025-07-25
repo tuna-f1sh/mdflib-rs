@@ -1,9 +1,9 @@
 //! MDF file reader implementation
 use crate::{
-    datagroup::DataGroup,
+    datagroup::{DataGroup, DataGroupRef},
     error::{MdfError, Result},
-    file::MdfFile,
-    header::MdfHeader,
+    header::MdfHeaderRef,
+    MdfFileRef,
 };
 use mdflib_sys::*;
 use std::ffi::CString;
@@ -93,13 +93,13 @@ impl MdfReader {
     }
 
     /// Gets the header from the file.
-    pub fn get_header(&self) -> Option<MdfHeader> {
+    pub fn get_header(&self) -> Option<MdfHeaderRef> {
         unsafe {
             let header = MdfReaderGetHeader(self.inner);
             if header.is_null() {
                 None
             } else {
-                Some(MdfHeader::new(header))
+                Some(MdfHeaderRef::new(header))
             }
         }
     }
@@ -121,13 +121,13 @@ impl MdfReader {
     }
 
     /// Gets a data group by its index.
-    pub fn get_data_group(&self, index: usize) -> Option<DataGroup> {
+    pub fn get_data_group(&self, index: usize) -> Option<DataGroupRef> {
         unsafe {
-            let dg = MdfReaderGetDataGroup(self.inner, index) as *mut IDataGroup;
+            let dg = MdfReaderGetDataGroup(self.inner, index);
             if dg.is_null() {
                 None
             } else {
-                Some(DataGroup::new(dg))
+                Some(DataGroupRef::new(dg))
             }
         }
     }

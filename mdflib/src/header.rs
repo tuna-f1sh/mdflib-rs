@@ -1,17 +1,17 @@
 use mdflib_sys as ffi;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
+use std::ops::Deref;
 use std::os::raw::c_char;
 
-/// Represents the header of an MDF file.
-/// This is a wrapper around the opaque `IHeader` pointer from the C library.
-#[derive(Debug)]
-pub struct MdfHeader<'a> {
+/// Represents an immutable reference to the header of an MDF file.
+#[derive(Debug, Clone, Copy)]
+pub struct MdfHeaderRef<'a> {
     pub(crate) inner: *const ffi::IHeader,
     _marker: PhantomData<&'a ()>,
 }
 
-impl<'a> MdfHeader<'a> {
+impl<'a> MdfHeaderRef<'a> {
     pub(crate) fn new(inner: *const ffi::IHeader) -> Self {
         Self {
             inner,
@@ -33,14 +33,6 @@ impl<'a> MdfHeader<'a> {
         }
     }
 
-    /// Sets the measurement ID.
-    pub fn set_measurement_id(&mut self, id: &str) {
-        let c_id = std::ffi::CString::new(id).unwrap();
-        unsafe {
-            ffi::IHeaderSetMeasurementId(self.inner as *mut ffi::IHeader, c_id.as_ptr());
-        }
-    }
-
     /// Gets the recorder ID.
     pub fn get_recorder_id(&self) -> String {
         unsafe {
@@ -55,24 +47,9 @@ impl<'a> MdfHeader<'a> {
         }
     }
 
-    /// Sets the recorder ID.
-    pub fn set_recorder_id(&mut self, id: &str) {
-        let c_id = std::ffi::CString::new(id).unwrap();
-        unsafe {
-            ffi::IHeaderSetRecorderId(self.inner as *mut ffi::IHeader, c_id.as_ptr());
-        }
-    }
-
     /// Gets the recorder index.
     pub fn get_recorder_index(&self) -> i64 {
         unsafe { ffi::IHeaderGetRecorderIndex(self.inner) }
-    }
-
-    /// Sets the recorder index.
-    pub fn set_recorder_index(&mut self, index: i64) {
-        unsafe {
-            ffi::IHeaderSetRecorderIndex(self.inner as *mut ffi::IHeader, index);
-        }
     }
 
     /// Gets the start angle.
@@ -87,13 +64,6 @@ impl<'a> MdfHeader<'a> {
         }
     }
 
-    /// Sets the start angle.
-    pub fn set_start_angle(&mut self, angle: f64) {
-        unsafe {
-            ffi::IHeaderSetStartAngle(self.inner as *mut ffi::IHeader, angle);
-        }
-    }
-
     /// Gets the start distance.
     pub fn get_start_distance(&self) -> Option<f64> {
         unsafe {
@@ -103,13 +73,6 @@ impl<'a> MdfHeader<'a> {
             } else {
                 None
             }
-        }
-    }
-
-    /// Sets the start distance.
-    pub fn set_start_distance(&mut self, distance: f64) {
-        unsafe {
-            ffi::IHeaderSetStartDistance(self.inner as *mut ffi::IHeader, distance);
         }
     }
 
@@ -127,14 +90,6 @@ impl<'a> MdfHeader<'a> {
         }
     }
 
-    /// Sets the author.
-    pub fn set_author(&mut self, author: &str) {
-        let c_author = std::ffi::CString::new(author).unwrap();
-        unsafe {
-            ffi::IHeaderSetAuthor(self.inner as *mut ffi::IHeader, c_author.as_ptr());
-        }
-    }
-
     /// Gets the department.
     pub fn get_department(&self) -> String {
         unsafe {
@@ -146,14 +101,6 @@ impl<'a> MdfHeader<'a> {
             let mut buf = vec![0 as c_char; len as usize];
             ffi::IHeaderGetDepartment(self.inner, buf.as_mut_ptr(), len);
             CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned()
-        }
-    }
-
-    /// Sets the department.
-    pub fn set_department(&mut self, department: &str) {
-        let c_department = std::ffi::CString::new(department).unwrap();
-        unsafe {
-            ffi::IHeaderSetDepartment(self.inner as *mut ffi::IHeader, c_department.as_ptr());
         }
     }
 
@@ -171,14 +118,6 @@ impl<'a> MdfHeader<'a> {
         }
     }
 
-    /// Sets the project.
-    pub fn set_project(&mut self, project: &str) {
-        let c_project = std::ffi::CString::new(project).unwrap();
-        unsafe {
-            ffi::IHeaderSetProject(self.inner as *mut ffi::IHeader, c_project.as_ptr());
-        }
-    }
-
     /// Gets the subject.
     pub fn get_subject(&self) -> String {
         unsafe {
@@ -190,14 +129,6 @@ impl<'a> MdfHeader<'a> {
             let mut buf = vec![0 as c_char; len as usize];
             ffi::IHeaderGetSubject(self.inner, buf.as_mut_ptr(), len);
             CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned()
-        }
-    }
-
-    /// Sets the subject.
-    pub fn set_subject(&mut self, subject: &str) {
-        let c_subject = std::ffi::CString::new(subject).unwrap();
-        unsafe {
-            ffi::IHeaderSetSubject(self.inner as *mut ffi::IHeader, c_subject.as_ptr());
         }
     }
 
@@ -215,23 +146,116 @@ impl<'a> MdfHeader<'a> {
         }
     }
 
-    /// Sets the description.
-    pub fn set_description(&mut self, description: &str) {
-        let c_description = std::ffi::CString::new(description).unwrap();
-        unsafe {
-            ffi::IHeaderSetDescription(self.inner as *mut ffi::IHeader, c_description.as_ptr());
-        }
-    }
-
     /// Gets the start time.
     pub fn get_start_time(&self) -> u64 {
         unsafe { ffi::IHeaderGetStartTime(self.inner) }
+    }
+}
+
+/// Represents a mutable reference to the header of an MDF file.
+#[derive(Debug)]
+pub struct MdfHeader<'a> {
+    pub(crate) inner: *mut ffi::IHeader,
+    inner_ref: MdfHeaderRef<'a>,
+}
+
+impl<'a> MdfHeader<'a> {
+    pub(crate) fn new(inner: *mut ffi::IHeader) -> Self {
+        Self {
+            inner,
+            inner_ref: MdfHeaderRef::new(inner),
+        }
+    }
+
+    /// Sets the measurement ID.
+    pub fn set_measurement_id(&mut self, id: &str) {
+        let c_id = CString::new(id).unwrap();
+        unsafe {
+            ffi::IHeaderSetMeasurementId(self.inner, c_id.as_ptr());
+        }
+    }
+
+    /// Sets the recorder ID.
+    pub fn set_recorder_id(&mut self, id: &str) {
+        let c_id = CString::new(id).unwrap();
+        unsafe {
+            ffi::IHeaderSetRecorderId(self.inner, c_id.as_ptr());
+        }
+    }
+
+    /// Sets the recorder index.
+    pub fn set_recorder_index(&mut self, index: i64) {
+        unsafe {
+            ffi::IHeaderSetRecorderIndex(self.inner, index);
+        }
+    }
+
+    /// Sets the start angle.
+    pub fn set_start_angle(&mut self, angle: f64) {
+        unsafe {
+            ffi::IHeaderSetStartAngle(self.inner, angle);
+        }
+    }
+
+    /// Sets the start distance.
+    pub fn set_start_distance(&mut self, distance: f64) {
+        unsafe {
+            ffi::IHeaderSetStartDistance(self.inner, distance);
+        }
+    }
+
+    /// Sets the author.
+    pub fn set_author(&mut self, author: &str) {
+        let c_author = CString::new(author).unwrap();
+        unsafe {
+            ffi::IHeaderSetAuthor(self.inner, c_author.as_ptr());
+        }
+    }
+
+    /// Sets the department.
+    pub fn set_department(&mut self, department: &str) {
+        let c_department = CString::new(department).unwrap();
+        unsafe {
+            ffi::IHeaderSetDepartment(self.inner, c_department.as_ptr());
+        }
+    }
+
+    /// Sets the project.
+    pub fn set_project(&mut self, project: &str) {
+        let c_project = CString::new(project).unwrap();
+        unsafe {
+            ffi::IHeaderSetProject(self.inner, c_project.as_ptr());
+        }
+    }
+
+    /// Sets the subject.
+    pub fn set_subject(&mut self, subject: &str) {
+        let c_subject = CString::new(subject).unwrap();
+        unsafe {
+            ffi::IHeaderSetSubject(self.inner, c_subject.as_ptr());
+        }
+    }
+
+    /// Sets the description.
+    pub fn set_description(&mut self, description: &str) {
+        let c_description = CString::new(description).unwrap();
+        unsafe {
+            ffi::IHeaderSetDescription(self.inner, c_description.as_ptr());
+        }
     }
 
     /// Sets the start time.
     pub fn set_start_time(&mut self, start_time: u64) {
         unsafe {
-            ffi::IHeaderSetStartTime(self.inner as *mut ffi::IHeader, start_time);
+            ffi::IHeaderSetStartTime(self.inner, start_time);
         }
+    }
+}
+
+impl<'a> Deref for MdfHeader<'a> {
+    type Target = MdfHeaderRef<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner_ref
     }
 }

@@ -3,7 +3,7 @@ use std::ffi::CStr;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
-use crate::{DataGroup, MdfHeader};
+use crate::{DataGroup, DataGroupRef, MdfHeaderRef};
 
 #[derive(Debug, Clone, Copy)]
 pub struct MdfFileRef {
@@ -57,8 +57,8 @@ impl MdfFileRef {
         unsafe { ffi::MdfFileGetMinorVersion(self.inner) }
     }
 
-    pub fn get_header(&self) -> MdfHeader {
-        unsafe { MdfHeader::new(ffi::MdfFileGetHeader(self.inner) as *mut _) }
+    pub fn get_header(&self) -> MdfHeaderRef {
+        unsafe { MdfHeaderRef::new(ffi::MdfFileGetHeader(self.inner)) }
     }
 
     pub fn is_mdf4(&self) -> bool {
@@ -69,8 +69,8 @@ impl MdfFileRef {
         unsafe { ffi::MdfFileGetDataGroupCount(self.inner) }
     }
 
-    pub fn get_data_group(&self, index: usize) -> DataGroup {
-        unsafe { DataGroup::new(ffi::MdfFileGetDataGroupByIndex(self.inner, index) as *mut _) }
+    pub fn get_data_group(&self, index: usize) -> DataGroupRef {
+        unsafe { DataGroupRef::new(ffi::MdfFileGetDataGroupByIndex(self.inner, index)) }
     }
 }
 
@@ -100,3 +100,4 @@ impl Deref for MdfFile {
         &self.inner_ref
     }
 }
+

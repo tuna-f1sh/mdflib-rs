@@ -1,12 +1,16 @@
 use mdflib_sys as ffi;
 use std::marker::PhantomData;
 
-/// Represents a CAN message.
-/// This is a wrapper around the opaque `CanMessage` pointer from the C library.
 #[derive(Debug)]
 pub struct CanMessage<'a> {
     pub(crate) inner: *mut ffi::CanMessage,
     _marker: PhantomData<&'a ()>,
+}
+
+impl Default for CanMessage<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<'a> CanMessage<'a> {
