@@ -2,6 +2,7 @@
 use crate::{
     datagroup::DataGroup,
     error::{MdfError, Result},
+    file::MdfFile,
     header::MdfHeader,
 };
 use mdflib_sys::*;
@@ -54,6 +55,18 @@ impl MdfReader {
     pub fn close(&mut self) {
         unsafe {
             MdfReaderClose(self.inner);
+        }
+    }
+
+    /// Gets the file object.
+    pub fn get_file(&self) -> Option<MdfFileRef> {
+        unsafe {
+            let file = MdfReaderGetFile(self.inner);
+            if file.is_null() {
+                None
+            } else {
+                Some(MdfFileRef::new(file))
+            }
         }
     }
 

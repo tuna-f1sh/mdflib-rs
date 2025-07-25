@@ -4,6 +4,7 @@ use crate::{
     channelgroup::ChannelGroup,
     datagroup::DataGroup,
     error::{MdfError, Result},
+    file::MdfFile,
     header::MdfHeader,
 };
 use mdflib_sys::*;
@@ -30,6 +31,18 @@ impl MdfWriter {
             }
 
             Ok(MdfWriter { inner: writer })
+        }
+    }
+
+    /// Gets the file object from the writer.
+    pub fn get_file(&self) -> Option<MdfFile> {
+        unsafe {
+            let file = MdfWriterGetFile(self.inner);
+            if file.is_null() {
+                None
+            } else {
+                Some(MdfFile::new(file))
+            }
         }
     }
 

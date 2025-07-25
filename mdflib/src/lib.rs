@@ -27,6 +27,7 @@ pub mod error;
 pub mod header;
 pub mod reader;
 pub mod writer;
+pub mod file;
 
 pub use canmessage::CanMessage;
 pub use channel::Channel;
@@ -35,6 +36,7 @@ pub use datagroup::DataGroup;
 pub use error::{MdfError, Result};
 pub use header::MdfHeader;
 pub use reader::MdfReader;
+pub use file::{MdfFile, MdfFileRef};
 
 #[cfg(test)]
 mod tests {}
