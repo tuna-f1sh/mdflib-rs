@@ -175,6 +175,7 @@ impl<'a> ETag<'a> {
         })
     }
 
+    #[allow(dead_code)]
     pub(crate) fn from_raw(inner: *mut ffi::ETag) -> Self {
         Self {
             inner,
@@ -320,15 +321,16 @@ mod tests {
     #[test]
     fn test_etag_creation_and_basic_operations() {
         let mut etag = ETag::new().expect("Failed to create ETag");
-        
+
         // Test name operations
         etag.set_name("TestTag").expect("Failed to set name");
         assert_eq!(etag.get_name(), "TestTag");
-        
+
         // Test description operations
-        etag.set_description("Test description").expect("Failed to set description");
+        etag.set_description("Test description")
+            .expect("Failed to set description");
         assert_eq!(etag.get_description(), "Test description");
-        
+
         // Test unit operations
         etag.set_unit("m/s").expect("Failed to set unit");
         assert_eq!(etag.get_unit(), "m/s");
@@ -337,26 +339,27 @@ mod tests {
     #[test]
     fn test_etag_value_operations() {
         let mut etag = ETag::new().expect("Failed to create ETag");
-        
+
         // Test string value
-        etag.set_value_as_string("test_value").expect("Failed to set string value");
+        etag.set_value_as_string("test_value")
+            .expect("Failed to set string value");
         assert_eq!(etag.get_value_as_string(), "test_value");
-        
+
         // Test float value
         etag.set_value_as_float(42.5);
         assert_eq!(etag.get_value_as_float(), 42.5);
-        
+
         // Test signed integer value
         etag.set_value_as_signed(123);
         assert_eq!(etag.get_value_as_signed(), 123);
-        
+
         // Test unsigned integer value
         etag.set_value_as_unsigned(456);
         assert_eq!(etag.get_value_as_unsigned(), 456);
-        
+
         // Test boolean value
         etag.set_value_as_boolean(true);
-        assert_eq!(etag.get_value_as_boolean(), true);
+        assert!(etag.get_value_as_boolean());
     }
 
     #[test]
@@ -365,13 +368,13 @@ mod tests {
         // In a real scenario, this would be used when getting ETags from C API
         let etag = ETag::new().expect("Failed to create ETag");
         let raw_ptr = etag.inner;
-        
+
         // Create ETag from raw pointer (simulating getting it from C API)
         let etag_from_raw = ETag::from_raw(raw_ptr);
-        
+
         // Verify it's the same underlying object
         assert_eq!(etag_from_raw.inner, raw_ptr);
-        
+
         // Prevent double-free by forgetting the original
         std::mem::forget(etag);
     }

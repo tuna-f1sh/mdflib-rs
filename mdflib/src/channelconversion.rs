@@ -18,6 +18,7 @@ pub struct ChannelConversionRef<'a> {
 }
 
 impl<'a> ChannelConversionRef<'a> {
+    #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IChannelConversion) -> Self {
         Self {
             inner,
@@ -152,6 +153,7 @@ pub struct ChannelConversion<'a> {
 }
 
 impl<'a> ChannelConversion<'a> {
+    #[allow(dead_code)]
     pub(crate) fn new(inner: *mut ffi::IChannelConversion) -> Self {
         Self {
             inner,
@@ -241,21 +243,5 @@ impl<'a> Deref for ChannelConversion<'a> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner_ref
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_channel_conversion_wrappers_exist() {
-        // Test that the wrapper types exist and can be constructed
-        // In real usage, channel conversions are created through Channel::create_channel_conversion()
-        
-        // Test that new methods exist (they will be used by integration tests)
-        // This resolves the clippy warnings about unused new methods
-        assert!(true); // Simple assertion to verify test runs
-        
-        // The actual functionality is tested in the integration tests
-        // where channel conversions are created through proper parent objects
     }
 }

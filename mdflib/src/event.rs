@@ -18,6 +18,7 @@ pub struct EventRef<'a> {
 }
 
 impl<'a> EventRef<'a> {
+    #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IEvent) -> Self {
         Self {
             inner,
@@ -138,6 +139,7 @@ pub struct Event<'a> {
 }
 
 impl<'a> Event<'a> {
+    #[allow(dead_code)]
     pub(crate) fn new(inner: *mut ffi::IEvent) -> Self {
         Self {
             inner,
@@ -241,21 +243,5 @@ impl<'a> Deref for Event<'a> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner_ref
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_event_wrappers_exist() {
-        // Test that the wrapper types exist and can be constructed
-        // In real usage, events are created through Header::create_event()
-        
-        // Test that new methods exist (they will be used by integration tests)
-        // This resolves the clippy warnings about unused new methods
-        assert!(true); // Simple assertion to verify test runs
-        
-        // The actual functionality is tested in the integration tests
-        // where events are created through proper parent objects
     }
 }

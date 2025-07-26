@@ -14,6 +14,7 @@ pub struct ChannelArrayRef<'a> {
 }
 
 impl<'a> ChannelArrayRef<'a> {
+    #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IChannelArray) -> Self {
         Self {
             inner,
@@ -55,6 +56,7 @@ pub struct ChannelArray<'a> {
 }
 
 impl<'a> ChannelArray<'a> {
+    #[allow(dead_code)]
     pub(crate) fn new(inner: *mut ffi::IChannelArray) -> Self {
         Self {
             inner,
@@ -97,21 +99,5 @@ impl<'a> Deref for ChannelArray<'a> {
 
     fn deref(&self) -> &Self::Target {
         &self.inner_ref
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_channel_array_wrappers_exist() {
-        // Test that the wrapper types exist and can be constructed
-        // In real usage, channel arrays are created through Channel::create_channel_array()
-        
-        // Test that new methods exist (they will be used by integration tests)
-        // This resolves the clippy warnings about unused new methods
-        assert!(true); // Simple assertion to verify test runs
-        
-        // The actual functionality is tested in the integration tests
-        // where channel arrays are created through proper parent objects
     }
 }
