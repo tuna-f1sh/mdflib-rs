@@ -3,6 +3,7 @@ use std::ffi::CStr;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
+use crate::attachment::{Attachment, AttachmentRef};
 use crate::{DataGroup, DataGroupRef, MdfHeaderRef};
 
 #[derive(Debug, Clone, Copy)]
@@ -72,6 +73,22 @@ impl MdfFileRef {
     pub fn get_data_group(&self, index: usize) -> DataGroupRef {
         unsafe { DataGroupRef::new(ffi::MdfFileGetDataGroupByIndex(self.inner, index)) }
     }
+
+    /// Gets the attachments of the file.
+    pub fn get_attachments(&self) -> Vec<AttachmentRef> {
+        const MAX_ATTACHMENTS: usize = 1000;
+        let mut attachments: Vec<*const ffi::IAttachment> = vec![std::ptr::null(); MAX_ATTACHMENTS];
+        let count = unsafe {
+            ffi::MdfFileGetAttachments(self.inner, attachments.as_mut_ptr(), MAX_ATTACHMENTS)
+        };
+
+        attachments.truncate(count);
+        attachments
+            .into_iter()
+            .filter(|&ptr| !ptr.is_null())
+            .map(AttachmentRef::new)
+            .collect()
+    }
 }
 
 #[derive(Debug)]
@@ -90,6 +107,18 @@ impl MdfFile {
 
     pub fn create_data_group(&mut self) -> DataGroup {
         unsafe { DataGroup::new(ffi::MdfFileCreateDataGroup(self.inner)) }
+    }
+
+    /// Creates an attachment for the file.
+    pub fn create_attachment(&mut self) -> Option<Attachment> {
+        unsafe {
+            let attachment = ffi::MdfFileCreateAttachment(self.inner);
+            if attachment.is_null() {
+                None
+            } else {
+                Some(Attachment::new(attachment))
+            }
+        }
     }
 }
 

@@ -5,6 +5,8 @@ use std::ops::Deref;
 use std::os::raw::c_char;
 
 use crate::channel::{Channel, ChannelRef};
+use crate::metadata::{MetaData, MetaDataRef};
+use crate::sourceinformation::{SourceInformation, SourceInformationRef};
 
 /// Represents an immutable reference to a channel group in an MDF file.
 #[derive(Debug, Clone, Copy)]
@@ -75,6 +77,30 @@ impl<'a> ChannelGroupRef<'a> {
             }
         }
     }
+
+    /// Gets the metadata of the channel group.
+    pub fn get_metadata(&self) -> Option<MetaDataRef> {
+        unsafe {
+            let metadata = ffi::ChannelGroupGetMetaData(self.inner);
+            if metadata.is_null() {
+                None
+            } else {
+                Some(MetaDataRef::new(metadata))
+            }
+        }
+    }
+
+    /// Gets the source information of the channel group.
+    pub fn get_source_information(&self) -> Option<SourceInformationRef> {
+        unsafe {
+            let source_info = ffi::ChannelGroupGetSourceInformation(self.inner);
+            if source_info.is_null() {
+                None
+            } else {
+                Some(SourceInformationRef::new(source_info))
+            }
+        }
+    }
 }
 
 /// Represents a mutable reference to a channel group in an MDF file.
@@ -123,6 +149,30 @@ impl<'a> ChannelGroup<'a> {
                 None
             } else {
                 Some(Channel::new(ch))
+            }
+        }
+    }
+
+    /// Creates metadata for the channel group.
+    pub fn create_metadata(&mut self) -> Option<MetaData> {
+        unsafe {
+            let metadata = ffi::ChannelGroupCreateMetaData(self.inner);
+            if metadata.is_null() {
+                None
+            } else {
+                Some(MetaData::new(metadata))
+            }
+        }
+    }
+
+    /// Creates source information for the channel group.
+    pub fn create_source_information(&mut self) -> Option<SourceInformation> {
+        unsafe {
+            let source_info = ffi::ChannelGroupCreateSourceInformation(self.inner);
+            if source_info.is_null() {
+                None
+            } else {
+                Some(SourceInformation::new(source_info))
             }
         }
     }
