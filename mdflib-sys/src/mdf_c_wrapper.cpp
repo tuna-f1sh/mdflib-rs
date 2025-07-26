@@ -1232,11 +1232,6 @@ EXPORT uint64_t ChannelArrayGetNofElements(const IChannelArray* array) {
     return array->Dimensions();
 }
 
-EXPORT void ChannelArraySetNofElements(IChannelArray* array, uint64_t elements) {
-    // Note: This is a simplified implementation
-    // The actual API requires setting dimension details using Shape()
-}
-
 // IChannelConversion functions
 EXPORT uint64_t ChannelConversionGetIndex(const IChannelConversion* conversion) {
     return conversion->Index();

@@ -83,12 +83,13 @@ impl<'a> ChannelArray<'a> {
         }
     }
 
-    /// Sets the number of elements in the channel array.
-    pub fn set_nof_elements(&mut self, elements: u64) {
-        unsafe {
-            ffi::ChannelArraySetNofElements(self.inner, elements);
-        }
-    }
+    // TODO
+    // /// Sets the number of elements in the channel array.
+    // pub fn set_nof_elements(&mut self, elements: u64) {
+    //     unsafe {
+    //         ffi::ChannelArraySetNofElements(self.inner, elements);
+    //     }
+    // }
 }
 
 impl<'a> Deref for ChannelArray<'a> {
