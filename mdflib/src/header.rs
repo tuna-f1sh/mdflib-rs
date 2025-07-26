@@ -4,10 +4,10 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
-use crate::metadata::{MetaData, MetaDataRef};
 use crate::attachment::{Attachment, AttachmentRef};
-use crate::filehistory::{FileHistory, FileHistoryRef};
 use crate::event::{Event, EventRef};
+use crate::filehistory::{FileHistory, FileHistoryRef};
+use crate::metadata::{MetaData, MetaDataRef};
 
 /// Represents an immutable reference to the header of an MDF file.
 #[derive(Debug, Clone, Copy)]
@@ -175,11 +175,12 @@ impl<'a> MdfHeaderRef<'a> {
         let count = unsafe {
             ffi::IHeaderGetAttachments(self.inner, attachments.as_mut_ptr(), MAX_ATTACHMENTS)
         };
-        
+
         attachments.truncate(count);
-        attachments.into_iter()
+        attachments
+            .into_iter()
             .filter(|&ptr| !ptr.is_null())
-            .map(|ptr| AttachmentRef::new(ptr))
+            .map(AttachmentRef::new)
             .collect()
     }
 
@@ -190,11 +191,12 @@ impl<'a> MdfHeaderRef<'a> {
         let count = unsafe {
             ffi::IHeaderGetFileHistories(self.inner, histories.as_mut_ptr(), MAX_HISTORIES)
         };
-        
+
         histories.truncate(count);
-        histories.into_iter()
+        histories
+            .into_iter()
             .filter(|&ptr| !ptr.is_null())
-            .map(|ptr| FileHistoryRef::new(ptr))
+            .map(FileHistoryRef::new)
             .collect()
     }
 
@@ -202,14 +204,13 @@ impl<'a> MdfHeaderRef<'a> {
     pub fn get_events(&self) -> Vec<EventRef> {
         const MAX_EVENTS: usize = 1000;
         let mut events: Vec<*const ffi::IEvent> = vec![std::ptr::null(); MAX_EVENTS];
-        let count = unsafe {
-            ffi::IHeaderGetEvents(self.inner, events.as_mut_ptr(), MAX_EVENTS)
-        };
-        
+        let count = unsafe { ffi::IHeaderGetEvents(self.inner, events.as_mut_ptr(), MAX_EVENTS) };
+
         events.truncate(count);
-        events.into_iter()
+        events
+            .into_iter()
             .filter(|&ptr| !ptr.is_null())
-            .map(|ptr| EventRef::new(ptr))
+            .map(EventRef::new)
             .collect()
     }
 }

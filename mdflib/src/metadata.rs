@@ -77,11 +77,12 @@ impl<'a> MetaDataRef<'a> {
         let count = unsafe {
             ffi::MetaDataGetProperties(self.inner, properties.as_mut_ptr(), MAX_PROPERTIES)
         };
-        
+
         properties.truncate(count);
-        properties.into_iter()
+        properties
+            .into_iter()
             .filter(|&ptr| !ptr.is_null())
-            .map(|ptr| ETag::from_raw(ptr))
+            .map(ETag::from_raw)
             .collect()
     }
 
@@ -92,11 +93,12 @@ impl<'a> MetaDataRef<'a> {
         let count = unsafe {
             ffi::MetaDataGetCommonProperties(self.inner, properties.as_mut_ptr(), MAX_PROPERTIES)
         };
-        
+
         properties.truncate(count);
-        properties.into_iter()
+        properties
+            .into_iter()
             .filter(|&ptr| !ptr.is_null())
-            .map(|ptr| ETag::from_raw(ptr))
+            .map(ETag::from_raw)
             .collect()
     }
 }

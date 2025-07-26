@@ -3,8 +3,8 @@ use std::ffi::CStr;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
-use crate::{DataGroup, DataGroupRef, MdfHeaderRef};
 use crate::attachment::{Attachment, AttachmentRef};
+use crate::{DataGroup, DataGroupRef, MdfHeaderRef};
 
 #[derive(Debug, Clone, Copy)]
 pub struct MdfFileRef {
@@ -81,11 +81,12 @@ impl MdfFileRef {
         let count = unsafe {
             ffi::MdfFileGetAttachments(self.inner, attachments.as_mut_ptr(), MAX_ATTACHMENTS)
         };
-        
+
         attachments.truncate(count);
-        attachments.into_iter()
+        attachments
+            .into_iter()
             .filter(|&ptr| !ptr.is_null())
-            .map(|ptr| AttachmentRef::new(ptr))
+            .map(AttachmentRef::new)
             .collect()
     }
 }

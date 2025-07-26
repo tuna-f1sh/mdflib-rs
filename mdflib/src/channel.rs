@@ -4,10 +4,10 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
+use crate::channelarray::{ChannelArray, ChannelArrayRef};
+use crate::channelconversion::{ChannelConversion, ChannelConversionRef};
 use crate::metadata::{MetaData, MetaDataRef};
 use crate::sourceinformation::{SourceInformation, SourceInformationRef};
-use crate::channelconversion::{ChannelConversion, ChannelConversionRef};
-use crate::channelarray::{ChannelArray, ChannelArrayRef};
 
 /// Represents an immutable reference to a channel in an MDF file.
 #[derive(Debug, Clone, Copy)]
