@@ -2,9 +2,9 @@
 //!
 //! This module provides safe Rust wrappers around the mdflib ISourceInformation functionality.
 
-use mdflib_sys as ffi;
 use crate::error::Result;
 use crate::metadata::{MetaData, MetaDataRef};
+use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::ops::Deref;

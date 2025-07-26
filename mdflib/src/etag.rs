@@ -2,8 +2,8 @@
 //!
 //! This module provides safe Rust wrappers around the mdflib ETag functionality.
 
-use mdflib_sys as ffi;
 use crate::error::{MdfError, Result};
+use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::ops::Deref;

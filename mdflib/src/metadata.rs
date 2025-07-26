@@ -2,8 +2,8 @@
 //!
 //! This module provides safe Rust wrappers around the mdflib IMetaData functionality.
 
-use mdflib_sys as ffi;
 use crate::error::Result;
+use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -39,12 +39,7 @@ impl<'a> MetaDataRef<'a> {
             }
             len += 1; // For null terminator
             let mut buf = vec![0 as c_char; len as usize];
-            ffi::MetaDataGetPropertyAsString(
-                self.inner,
-                c_index.as_ptr(),
-                buf.as_mut_ptr(),
-                len,
-            );
+            ffi::MetaDataGetPropertyAsString(self.inner, c_index.as_ptr(), buf.as_mut_ptr(), len);
             Ok(CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned())
         }
     }
@@ -53,18 +48,17 @@ impl<'a> MetaDataRef<'a> {
     pub fn get_property_as_float(&self, index: &str) -> Result<f64> {
         let c_index = CString::new(index)?;
         unsafe {
-            Ok(ffi::MetaDataGetPropertyAsFloat(self.inner, c_index.as_ptr()))
+            Ok(ffi::MetaDataGetPropertyAsFloat(
+                self.inner,
+                c_index.as_ptr(),
+            ))
         }
     }
 
     /// Gets the XML snippet.
     pub fn get_xml_snippet(&self) -> String {
         unsafe {
-            let mut len = ffi::MetaDataGetXmlSnippet(
-                self.inner,
-                std::ptr::null_mut(),
-                0,
-            );
+            let mut len = ffi::MetaDataGetXmlSnippet(self.inner, std::ptr::null_mut(), 0);
             if len == 0 {
                 return String::new();
             }
