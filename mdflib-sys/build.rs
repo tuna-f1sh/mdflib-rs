@@ -342,11 +342,11 @@ fn setup_bundled_linking(install_dir: &Path) {
         println!("cargo:rustc-link-search=native={}", lib64_dir.display());
     }
 
-    // Link the mdflib core library (static)
-    println!("cargo:rustc-link-lib=static=mdf");
-
     // Link the C wrapper library (static)
     println!("cargo:rustc-link-lib=static=mdf_c_wrapper");
+
+    // Link the mdflib core library (static)
+    println!("cargo:rustc-link-lib=static=mdf");
 
     // Link required dependencies
     // Removed direct calls to setup_zlib_dependency and setup_expat_dependency
@@ -400,15 +400,9 @@ fn setup_system_linking() {
         .flag("-Wno-overloaded-virtual") // Suppress mdf::MdString::ToXml' hides overloaded virtual function
         .flag("-std=c++17");
 
-    if cfg!(target_os = "macos") {
-        cc_build.cpp_link_stdlib("c++");
-    } else {
-        cc_build.cpp_link_stdlib("stdc++");
-    }
-
     // Try to find system-installed mdflib using pkg-config
     if let Ok(library) = pkg_config::Config::new()
-        .atleast_version("2.1")
+        .atleast_version("2.3")
         .probe("mdflib")
     {
         for path in library.link_paths {
