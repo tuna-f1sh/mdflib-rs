@@ -262,6 +262,23 @@ EXPORT IDataGroup* MdfFileCreateDataGroup(MdfFile* file) {
     return file->CreateDataGroup();
 }
 
+EXPORT size_t MdfFileGetAttachments(const MdfFile* file, const IAttachment* attachments[], size_t max_count) {
+    if (!file || !attachments) return 0;
+    
+    std::vector<const IAttachment*> temp_list;
+    file->Attachments(temp_list);
+    
+    size_t copy_count = std::min(temp_list.size(), max_count);
+    for (size_t i = 0; i < copy_count; ++i) {
+        attachments[i] = temp_list[i];
+    }
+    return temp_list.size();
+}
+
+EXPORT IAttachment* MdfFileCreateAttachment(MdfFile* file) {
+    return file ? file->CreateAttachment() : nullptr;
+}
+
 // IDataGroup functions
 EXPORT uint64_t DataGroupGetIndex(const IDataGroup* group) {
     return group->Index();
@@ -350,6 +367,22 @@ EXPORT const IChannel* ChannelGroupGetChannelByIndex(const IChannelGroup* group,
 
 EXPORT IChannel* ChannelGroupCreateChannel(IChannelGroup* group) {
     return group->CreateChannel();
+}
+
+EXPORT const IMetaData* ChannelGroupGetMetaData(const IChannelGroup* group) {
+    return group ? group->MetaData() : nullptr;
+}
+
+EXPORT IMetaData* ChannelGroupCreateMetaData(IChannelGroup* group) {
+    return group ? group->CreateMetaData() : nullptr;
+}
+
+EXPORT const ISourceInformation* ChannelGroupGetSourceInformation(const IChannelGroup* group) {
+    return group ? group->SourceInformation() : nullptr;
+}
+
+EXPORT ISourceInformation* ChannelGroupCreateSourceInformation(IChannelGroup* group) {
+    return group ? group->CreateSourceInformation() : nullptr;
 }
 
 // IHeader functions
@@ -491,6 +524,62 @@ EXPORT void IHeaderSetStartTime(IHeader* header, uint64_t start_time) {
     header->StartTime(start_time);
 }
 
+EXPORT const IMetaData* IHeaderGetMetaData(const IHeader* header) {
+    return header ? header->MetaData() : nullptr;
+}
+
+EXPORT IMetaData* IHeaderCreateMetaData(IHeader* header) {
+    return header ? header->CreateMetaData() : nullptr;
+}
+
+EXPORT size_t IHeaderGetAttachments(const IHeader* header, const IAttachment* attachments[], size_t max_count) {
+    if (!header || !attachments) return 0;
+    
+    auto temp_list = header->Attachments();
+    
+    size_t copy_count = std::min(temp_list.size(), max_count);
+    for (size_t i = 0; i < copy_count; ++i) {
+        attachments[i] = temp_list[i];
+    }
+    return temp_list.size();
+}
+
+EXPORT IAttachment* IHeaderCreateAttachment(IHeader* header) {
+    return header ? header->CreateAttachment() : nullptr;
+}
+
+EXPORT size_t IHeaderGetFileHistories(const IHeader* header, const IFileHistory* histories[], size_t max_count) {
+    if (!header || !histories) return 0;
+    
+    auto temp_list = header->FileHistories();
+    
+    size_t copy_count = std::min(temp_list.size(), max_count);
+    for (size_t i = 0; i < copy_count; ++i) {
+        histories[i] = temp_list[i];
+    }
+    return temp_list.size();
+}
+
+EXPORT IFileHistory* IHeaderCreateFileHistory(IHeader* header) {
+    return header ? header->CreateFileHistory() : nullptr;
+}
+
+EXPORT size_t IHeaderGetEvents(const IHeader* header, const IEvent* events[], size_t max_count) {
+    if (!header || !events) return 0;
+    
+    auto temp_list = header->Events();
+    
+    size_t copy_count = std::min(temp_list.size(), max_count);
+    for (size_t i = 0; i < copy_count; ++i) {
+        events[i] = temp_list[i];
+    }
+    return temp_list.size();
+}
+
+EXPORT IEvent* IHeaderCreateEvent(IHeader* header) {
+    return header ? header->CreateEvent() : nullptr;
+}
+
 // IChannel functions
 EXPORT uint64_t ChannelGetIndex(const IChannel* channel) {
     return channel->Index();
@@ -580,6 +669,38 @@ EXPORT void ChannelSetChannelValue(IChannel* channel, uint32_t value, bool valid
     if (channel) {
         channel->SetChannelValue(value, valid);
     }
+}
+
+EXPORT const IMetaData* ChannelGetMetaData(const IChannel* channel) {
+    return channel ? channel->MetaData() : nullptr;
+}
+
+EXPORT IMetaData* ChannelCreateMetaData(IChannel* channel) {
+    return channel ? channel->CreateMetaData() : nullptr;
+}
+
+EXPORT const ISourceInformation* ChannelGetSourceInformation(const IChannel* channel) {
+    return channel ? channel->SourceInformation() : nullptr;
+}
+
+EXPORT ISourceInformation* ChannelCreateSourceInformation(IChannel* channel) {
+    return channel ? channel->CreateSourceInformation() : nullptr;
+}
+
+EXPORT const IChannelConversion* ChannelGetChannelConversion(const IChannel* channel) {
+    return channel ? channel->ChannelConversion() : nullptr;
+}
+
+EXPORT IChannelConversion* ChannelCreateChannelConversion(IChannel* channel) {
+    return channel ? channel->CreateChannelConversion() : nullptr;
+}
+
+EXPORT const IChannelArray* ChannelGetChannelArray(const IChannel* channel) {
+    return channel ? channel->ChannelArray() : nullptr;
+}
+
+EXPORT IChannelArray* ChannelCreateChannelArray(IChannel* channel) {
+    return channel ? channel->CreateChannelArray() : nullptr;
 }
 
 // CanMessage functions
@@ -1042,6 +1163,37 @@ EXPORT size_t MetaDataGetXmlSnippet(const IMetaData* metadata, char* xml, size_t
 
 EXPORT void MetaDataSetXmlSnippet(IMetaData* metadata, const char* xml) {
     metadata->XmlSnippet(xml ? xml : "");
+}
+
+EXPORT size_t MetaDataGetProperties(const IMetaData* metadata, ETag* properties[], size_t max_count) {
+    if (!metadata || !properties) return 0;
+    
+    auto temp_list = metadata->Properties();
+    
+    size_t copy_count = std::min(temp_list.size(), max_count);
+    for (size_t i = 0; i < copy_count; ++i) {
+        properties[i] = &temp_list[i];
+    }
+    return temp_list.size();
+}
+
+EXPORT size_t MetaDataGetCommonProperties(const IMetaData* metadata, ETag* properties[], size_t max_count) {
+    if (!metadata || !properties) return 0;
+    
+    auto temp_list = metadata->Properties(); // Use the general Properties for reading
+    
+    size_t copy_count = std::min(temp_list.size(), max_count);
+    for (size_t i = 0; i < copy_count; ++i) {
+        properties[i] = &temp_list[i];
+    }
+    return temp_list.size();
+}
+
+EXPORT void MetaDataAddCommonProperty(IMetaData* metadata, ETag* tag) {
+    if (metadata && tag) {
+        std::vector<ETag> tag_list = {*tag};
+        metadata->CommonProperties(tag_list);
+    }
 }
 
 // ETag functions

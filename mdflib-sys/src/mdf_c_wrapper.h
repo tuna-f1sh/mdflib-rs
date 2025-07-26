@@ -120,6 +120,8 @@ EXPORT bool MdfFileGetIsMdf4(const MdfFile* file);
 EXPORT size_t MdfFileGetDataGroupCount(const MdfFile* file);
 EXPORT const IDataGroup* MdfFileGetDataGroupByIndex(const MdfFile* file, size_t index);
 EXPORT IDataGroup* MdfFileCreateDataGroup(MdfFile* file);
+EXPORT size_t MdfFileGetAttachments(const MdfFile* file, const IAttachment* attachments[], size_t max_count);
+EXPORT IAttachment* MdfFileCreateAttachment(MdfFile* file);
 
 // IDataGroup functions
 EXPORT uint64_t DataGroupGetIndex(const IDataGroup* group);
@@ -140,6 +142,10 @@ EXPORT void ChannelGroupSetNofSamples(IChannelGroup* group, uint64_t samples);
 EXPORT size_t ChannelGroupGetChannelCount(const IChannelGroup* group);
 EXPORT const IChannel* ChannelGroupGetChannelByIndex(const IChannelGroup* group, size_t index);
 EXPORT IChannel* ChannelGroupCreateChannel(IChannelGroup* group);
+EXPORT const IMetaData* ChannelGroupGetMetaData(const IChannelGroup* group);
+EXPORT IMetaData* ChannelGroupCreateMetaData(IChannelGroup* group);
+EXPORT const ISourceInformation* ChannelGroupGetSourceInformation(const IChannelGroup* group);
+EXPORT ISourceInformation* ChannelGroupCreateSourceInformation(IChannelGroup* group);
 
 // IChannel functions
 EXPORT uint64_t ChannelGetIndex(const IChannel* channel);
@@ -158,6 +164,14 @@ EXPORT void ChannelSetDataType(IChannel* channel, uint8_t data_type);
 EXPORT uint64_t ChannelGetDataBytes(const IChannel* channel);
 EXPORT void ChannelSetDataBytes(IChannel* channel, uint64_t bytes);
 EXPORT void ChannelSetChannelValue(IChannel* channel, uint32_t value, bool valid);
+EXPORT const IMetaData* ChannelGetMetaData(const IChannel* channel);
+EXPORT IMetaData* ChannelCreateMetaData(IChannel* channel);
+EXPORT const ISourceInformation* ChannelGetSourceInformation(const IChannel* channel);
+EXPORT ISourceInformation* ChannelCreateSourceInformation(IChannel* channel);
+EXPORT const IChannelConversion* ChannelGetChannelConversion(const IChannel* channel);
+EXPORT IChannelConversion* ChannelCreateChannelConversion(IChannel* channel);
+EXPORT const IChannelArray* ChannelGetChannelArray(const IChannel* channel);
+EXPORT IChannelArray* ChannelCreateChannelArray(IChannel* channel);
 
 // IHeader functions
 EXPORT size_t IHeaderGetMeasurementId(const IHeader* header, char* id, size_t max_length);
@@ -182,6 +196,14 @@ EXPORT size_t IHeaderGetDescription(const IHeader* header, char* description, si
 EXPORT void IHeaderSetDescription(IHeader* header, const char* description);
 EXPORT uint64_t IHeaderGetStartTime(const IHeader* header);
 EXPORT void IHeaderSetStartTime(IHeader* header, uint64_t start_time);
+EXPORT const IMetaData* IHeaderGetMetaData(const IHeader* header);
+EXPORT IMetaData* IHeaderCreateMetaData(IHeader* header);
+EXPORT size_t IHeaderGetAttachments(const IHeader* header, const IAttachment* attachments[], size_t max_count);
+EXPORT IAttachment* IHeaderCreateAttachment(IHeader* header);
+EXPORT size_t IHeaderGetFileHistories(const IHeader* header, const IFileHistory* histories[], size_t max_count);
+EXPORT IFileHistory* IHeaderCreateFileHistory(IHeader* header);
+EXPORT size_t IHeaderGetEvents(const IHeader* header, const IEvent* events[], size_t max_count);
+EXPORT IEvent* IHeaderCreateEvent(IHeader* header);
 
 // ISourceInformation functions
 EXPORT uint64_t SourceInformationGetIndex(const ISourceInformation* source);
@@ -267,6 +289,9 @@ EXPORT double MetaDataGetPropertyAsFloat(const IMetaData* metadata, const char* 
 EXPORT void MetaDataSetPropertyAsFloat(IMetaData* metadata, const char* index, double prop);
 EXPORT size_t MetaDataGetXmlSnippet(const IMetaData* metadata, char* xml, size_t max_length);
 EXPORT void MetaDataSetXmlSnippet(IMetaData* metadata, const char* xml);
+EXPORT size_t MetaDataGetProperties(const IMetaData* metadata, ETag* properties[], size_t max_count);
+EXPORT size_t MetaDataGetCommonProperties(const IMetaData* metadata, ETag* properties[], size_t max_count);
+EXPORT void MetaDataAddCommonProperty(IMetaData* metadata, ETag* tag);
 
 // ETag functions
 EXPORT ETag* ETagInit();

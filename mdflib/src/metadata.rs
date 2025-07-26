@@ -3,6 +3,7 @@
 //! This module provides safe Rust wrappers around the mdflib IMetaData functionality.
 
 use crate::error::Result;
+use crate::etag::ETag;
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
@@ -68,6 +69,36 @@ impl<'a> MetaDataRef<'a> {
             CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned()
         }
     }
+
+    /// Gets all properties as ETag objects.
+    pub fn get_properties(&self) -> Vec<ETag> {
+        const MAX_PROPERTIES: usize = 1000;
+        let mut properties: Vec<*mut ffi::ETag> = vec![std::ptr::null_mut(); MAX_PROPERTIES];
+        let count = unsafe {
+            ffi::MetaDataGetProperties(self.inner, properties.as_mut_ptr(), MAX_PROPERTIES)
+        };
+        
+        properties.truncate(count);
+        properties.into_iter()
+            .filter(|&ptr| !ptr.is_null())
+            .map(|ptr| ETag::from_raw(ptr))
+            .collect()
+    }
+
+    /// Gets common properties as ETag objects.
+    pub fn get_common_properties(&self) -> Vec<ETag> {
+        const MAX_PROPERTIES: usize = 1000;
+        let mut properties: Vec<*mut ffi::ETag> = vec![std::ptr::null_mut(); MAX_PROPERTIES];
+        let count = unsafe {
+            ffi::MetaDataGetCommonProperties(self.inner, properties.as_mut_ptr(), MAX_PROPERTIES)
+        };
+        
+        properties.truncate(count);
+        properties.into_iter()
+            .filter(|&ptr| !ptr.is_null())
+            .map(|ptr| ETag::from_raw(ptr))
+            .collect()
+    }
 }
 
 /// Represents mutable metadata in an MDF file.
@@ -111,6 +142,13 @@ impl<'a> MetaData<'a> {
             ffi::MetaDataSetXmlSnippet(self.inner, c_xml.as_ptr());
         }
         Ok(())
+    }
+
+    /// Adds a common property.
+    pub fn add_common_property(&mut self, tag: &ETag) {
+        unsafe {
+            ffi::MetaDataAddCommonProperty(self.inner, tag.inner);
+        }
     }
 }
 

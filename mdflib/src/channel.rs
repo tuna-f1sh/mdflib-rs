@@ -4,6 +4,11 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
+use crate::metadata::{MetaData, MetaDataRef};
+use crate::sourceinformation::{SourceInformation, SourceInformationRef};
+use crate::channelconversion::{ChannelConversion, ChannelConversionRef};
+use crate::channelarray::{ChannelArray, ChannelArrayRef};
+
 /// Represents an immutable reference to a channel in an MDF file.
 #[derive(Debug, Clone, Copy)]
 pub struct ChannelRef<'a> {
@@ -94,6 +99,54 @@ impl<'a> ChannelRef<'a> {
     pub fn get_data_bytes(&self) -> u64 {
         unsafe { ffi::ChannelGetDataBytes(self.inner) }
     }
+
+    /// Gets the metadata of the channel.
+    pub fn get_metadata(&self) -> Option<MetaDataRef> {
+        unsafe {
+            let metadata = ffi::ChannelGetMetaData(self.inner);
+            if metadata.is_null() {
+                None
+            } else {
+                Some(MetaDataRef::new(metadata))
+            }
+        }
+    }
+
+    /// Gets the source information of the channel.
+    pub fn get_source_information(&self) -> Option<SourceInformationRef> {
+        unsafe {
+            let source_info = ffi::ChannelGetSourceInformation(self.inner);
+            if source_info.is_null() {
+                None
+            } else {
+                Some(SourceInformationRef::new(source_info))
+            }
+        }
+    }
+
+    /// Gets the channel conversion of the channel.
+    pub fn get_channel_conversion(&self) -> Option<ChannelConversionRef> {
+        unsafe {
+            let conversion = ffi::ChannelGetChannelConversion(self.inner);
+            if conversion.is_null() {
+                None
+            } else {
+                Some(ChannelConversionRef::new(conversion))
+            }
+        }
+    }
+
+    /// Gets the channel array of the channel.
+    pub fn get_channel_array(&self) -> Option<ChannelArrayRef> {
+        unsafe {
+            let array = ffi::ChannelGetChannelArray(self.inner);
+            if array.is_null() {
+                None
+            } else {
+                Some(ChannelArrayRef::new(array))
+            }
+        }
+    }
 }
 
 /// Represents a mutable reference to a channel in an MDF file.
@@ -168,6 +221,54 @@ impl<'a> Channel<'a> {
     pub fn set_channel_value(&mut self, value: u32, valid: bool) {
         unsafe {
             ffi::ChannelSetChannelValue(self.inner, value, valid);
+        }
+    }
+
+    /// Creates metadata for the channel.
+    pub fn create_metadata(&mut self) -> Option<MetaData> {
+        unsafe {
+            let metadata = ffi::ChannelCreateMetaData(self.inner);
+            if metadata.is_null() {
+                None
+            } else {
+                Some(MetaData::new(metadata))
+            }
+        }
+    }
+
+    /// Creates source information for the channel.
+    pub fn create_source_information(&mut self) -> Option<SourceInformation> {
+        unsafe {
+            let source_info = ffi::ChannelCreateSourceInformation(self.inner);
+            if source_info.is_null() {
+                None
+            } else {
+                Some(SourceInformation::new(source_info))
+            }
+        }
+    }
+
+    /// Creates channel conversion for the channel.
+    pub fn create_channel_conversion(&mut self) -> Option<ChannelConversion> {
+        unsafe {
+            let conversion = ffi::ChannelCreateChannelConversion(self.inner);
+            if conversion.is_null() {
+                None
+            } else {
+                Some(ChannelConversion::new(conversion))
+            }
+        }
+    }
+
+    /// Creates channel array for the channel.
+    pub fn create_channel_array(&mut self) -> Option<ChannelArray> {
+        unsafe {
+            let array = ffi::ChannelCreateChannelArray(self.inner);
+            if array.is_null() {
+                None
+            } else {
+                Some(ChannelArray::new(array))
+            }
         }
     }
 }
