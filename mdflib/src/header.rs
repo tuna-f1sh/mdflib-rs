@@ -1,22 +1,23 @@
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
+use crate::attachment::{Attachment, AttachmentRef};
+use crate::datagroup::{DataGroup, DataGroupRef};
+use crate::event::{Event, EventRef};
+use crate::filehistory::{FileHistory, FileHistoryRef};
+use crate::metadata::{MetaData, MetaDataRef};
+
 /// Represents an immutable reference to the header of an MDF file.
 #[derive(Debug, Clone, Copy)]
-pub struct MdfHeaderRef<'a> {
+pub struct MdfHeaderRef {
     pub(crate) inner: *const ffi::IHeader,
-    _marker: PhantomData<&'a ()>,
 }
 
-impl<'a> MdfHeaderRef<'a> {
+impl MdfHeaderRef {
     pub(crate) fn new(inner: *const ffi::IHeader) -> Self {
-        Self {
-            inner,
-            _marker: PhantomData,
-        }
+        Self { inner }
     }
 
     /// Gets the measurement ID.
@@ -150,16 +151,74 @@ impl<'a> MdfHeaderRef<'a> {
     pub fn get_start_time(&self) -> u64 {
         unsafe { ffi::IHeaderGetStartTime(self.inner) }
     }
+
+    /// Gets the metadata of the header.
+    pub fn get_metadata(&self) -> Option<MetaDataRef> {
+        unsafe {
+            let metadata = ffi::IHeaderGetMetaData(self.inner);
+            if metadata.is_null() {
+                None
+            } else {
+                Some(MetaDataRef::new(metadata))
+            }
+        }
+    }
+
+    /// Gets the attachments of the header.
+    pub fn get_attachments(&self) -> Vec<AttachmentRef> {
+        const MAX_ATTACHMENTS: usize = 1000;
+        let mut attachments: Vec<*const ffi::IAttachment> = vec![std::ptr::null(); MAX_ATTACHMENTS];
+        let count = unsafe {
+            ffi::IHeaderGetAttachments(self.inner, attachments.as_mut_ptr(), MAX_ATTACHMENTS)
+        };
+
+        attachments.truncate(count);
+        attachments
+            .into_iter()
+            .filter(|&ptr| !ptr.is_null())
+            .map(AttachmentRef::new)
+            .collect()
+    }
+
+    /// Gets the file histories of the header.
+    pub fn get_file_histories(&self) -> Vec<FileHistoryRef> {
+        const MAX_HISTORIES: usize = 1000;
+        let mut histories: Vec<*const ffi::IFileHistory> = vec![std::ptr::null(); MAX_HISTORIES];
+        let count = unsafe {
+            ffi::IHeaderGetFileHistories(self.inner, histories.as_mut_ptr(), MAX_HISTORIES)
+        };
+
+        histories.truncate(count);
+        histories
+            .into_iter()
+            .filter(|&ptr| !ptr.is_null())
+            .map(FileHistoryRef::new)
+            .collect()
+    }
+
+    /// Gets the events of the header.
+    pub fn get_events(&self) -> Vec<EventRef> {
+        const MAX_EVENTS: usize = 1000;
+        let mut events: Vec<*const ffi::IEvent> = vec![std::ptr::null(); MAX_EVENTS];
+        let count = unsafe { ffi::IHeaderGetEvents(self.inner, events.as_mut_ptr(), MAX_EVENTS) };
+
+        events.truncate(count);
+        events
+            .into_iter()
+            .filter(|&ptr| !ptr.is_null())
+            .map(EventRef::new)
+            .collect()
+    }
 }
 
 /// Represents a mutable reference to the header of an MDF file.
 #[derive(Debug)]
-pub struct MdfHeader<'a> {
+pub struct MdfHeader {
     pub(crate) inner: *mut ffi::IHeader,
-    inner_ref: MdfHeaderRef<'a>,
+    inner_ref: MdfHeaderRef,
 }
 
-impl<'a> MdfHeader<'a> {
+impl MdfHeader {
     pub(crate) fn new(inner: *mut ffi::IHeader) -> Self {
         Self {
             inner,
@@ -250,10 +309,86 @@ impl<'a> MdfHeader<'a> {
             ffi::IHeaderSetStartTime(self.inner, start_time);
         }
     }
+
+    /// Creates metadata for the header.
+    pub fn create_metadata(&mut self) -> Option<MetaData> {
+        unsafe {
+            let metadata = ffi::IHeaderCreateMetaData(self.inner);
+            if metadata.is_null() {
+                None
+            } else {
+                Some(MetaData::new(metadata))
+            }
+        }
+    }
+
+    /// Creates an attachment for the header.
+    pub fn create_attachment(&mut self) -> Option<Attachment> {
+        unsafe {
+            let attachment = ffi::IHeaderCreateAttachment(self.inner);
+            if attachment.is_null() {
+                None
+            } else {
+                Some(Attachment::new(attachment))
+            }
+        }
+    }
+
+    /// Creates a file history for the header.
+    pub fn create_file_history(&mut self) -> Option<FileHistory> {
+        unsafe {
+            let file_history = ffi::IHeaderCreateFileHistory(self.inner);
+            if file_history.is_null() {
+                None
+            } else {
+                Some(FileHistory::new(file_history))
+            }
+        }
+    }
+
+    /// Creates an event for the header.
+    pub fn create_event(&mut self) -> Option<Event> {
+        unsafe {
+            let event = ffi::IHeaderCreateEvent(self.inner);
+            if event.is_null() {
+                None
+            } else {
+                Some(Event::new(event))
+            }
+        }
+    }
+
+    /// Gets all data groups from the header.
+    pub fn get_data_groups(&self) -> Vec<DataGroupRef> {
+        const MAX_DATA_GROUPS: usize = 1000;
+        let mut data_groups: Vec<*const ffi::IDataGroup> = vec![std::ptr::null(); MAX_DATA_GROUPS];
+        let count = unsafe {
+            ffi::IHeaderGetDataGroups(self.inner, data_groups.as_mut_ptr(), MAX_DATA_GROUPS)
+        };
+
+        data_groups.truncate(count);
+        data_groups
+            .into_iter()
+            .filter(|&ptr| !ptr.is_null())
+            .map(DataGroupRef::new)
+            .collect()
+    }
+
+    /// Gets the last data group from the header.
+    pub fn get_last_data_group(&self) -> Option<DataGroup> {
+        unsafe {
+            let data_group = ffi::IHeaderLastDataGroup(self.inner);
+            if data_group.is_null() {
+                None
+            } else {
+                Some(DataGroup::new(data_group))
+            }
+        }
+    }
 }
 
-impl<'a> Deref for MdfHeader<'a> {
-    type Target = MdfHeaderRef<'a>;
+impl Deref for MdfHeader {
+    type Target = MdfHeaderRef;
 
     fn deref(&self) -> &Self::Target {
         &self.inner_ref

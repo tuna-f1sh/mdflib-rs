@@ -1,7 +1,7 @@
 //! MDF file writer implementation
 use crate::{
-    canmessage::CanMessage,
-    channelgroup::ChannelGroup,
+    canmessage::CanMessageRef,
+    channelgroup::ChannelGroupRef,
     datagroup::DataGroup,
     error::{MdfError, Result},
     file::MdfFile,
@@ -126,16 +126,16 @@ impl MdfWriter {
     }
 
     /// Save a sample
-    pub fn save_sample(&mut self, group: &mut ChannelGroup, time: u64) {
+    pub fn save_sample(&mut self, group: &ChannelGroupRef, time: u64) {
         unsafe { MdfWriterSaveSample(self.inner, group.inner, time) }
     }
 
     /// Save a CAN message
     pub fn save_can_message(
         &mut self,
-        group: &mut ChannelGroup,
+        group: &ChannelGroupRef,
         time: u64,
-        message: &mut CanMessage,
+        message: &CanMessageRef,
     ) {
         unsafe { MdfWriterSaveCanMessage(self.inner, group.inner, time, message.inner) }
     }
@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn test_writer_creation() {
         let temp_file = NamedTempFile::new().unwrap();
-        let writer = MdfWriter::new(MdfWriterType::MdfWriterType_Mdf4, temp_file.path());
+        let writer = MdfWriter::new(MdfWriterType::Mdf4Basic, temp_file.path());
         assert!(writer.is_ok());
     }
 }

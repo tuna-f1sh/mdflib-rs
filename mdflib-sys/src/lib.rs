@@ -25,7 +25,7 @@ mod tests {
 
         unsafe {
             // Writer part
-            let writer = MdfWriterInit(MdfWriterType::MdfWriterType_Mdf4, filename.as_ptr());
+            let writer = MdfWriterInit(MdfWriterType::Mdf4Basic, filename.as_ptr());
             assert!(!writer.is_null(), "Failed to initialize MdfWriter");
 
             let file = MdfWriterGetFile(writer);
@@ -41,10 +41,7 @@ mod tests {
             let channel = ChannelGroupCreateChannel(channel_group);
             assert!(!channel.is_null(), "Failed to create IChannel");
             ChannelSetName(channel, channel_name.as_ptr());
-            ChannelSetDataType(
-                channel,
-                ChannelDataType::ChannelDataType_UnsignedIntegerLe as u8,
-            );
+            ChannelSetDataType(channel, ChannelDataType::UnsignedIntegerLe as u8);
             ChannelSetDataBytes(channel, 4);
 
             assert!(

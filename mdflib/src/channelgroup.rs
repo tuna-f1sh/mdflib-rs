@@ -1,24 +1,32 @@
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
 use crate::channel::{Channel, ChannelRef};
+use crate::metadata::{MetaData, MetaDataRef};
+use crate::sourceinformation::{SourceInformation, SourceInformationRef};
 
 /// Represents an immutable reference to a channel group in an MDF file.
+///
+/// # Safety
+/// This type holds a raw pointer to a C++ object. The pointer is only valid
+/// as long as the parent MDF file/writer object exists. Do not use this
+/// reference after the parent object has been dropped.
 #[derive(Debug, Clone, Copy)]
-pub struct ChannelGroupRef<'a> {
+pub struct ChannelGroupRef {
     pub(crate) inner: *const ffi::IChannelGroup,
-    _marker: PhantomData<&'a ()>,
 }
 
-impl<'a> ChannelGroupRef<'a> {
+impl ChannelGroupRef {
     pub(crate) fn new(inner: *const ffi::IChannelGroup) -> Self {
-        Self {
-            inner,
-            _marker: PhantomData,
-        }
+        Self { inner }
+    }
+
+    /// Gets the raw pointer to the underlying IChannelGroup.
+    /// This is used for advanced operations like creating channel observers.
+    pub fn as_ptr(&self) -> *const ffi::IChannelGroup {
+        self.inner
     }
 
     /// Gets the index of the channel group.
@@ -75,16 +83,45 @@ impl<'a> ChannelGroupRef<'a> {
             }
         }
     }
+
+    pub fn get_channels(&self) -> Vec<ChannelRef> {
+        let count = self.get_channel_count();
+        (0..count).filter_map(|i| self.get_channel(i)).collect()
+    }
+
+    /// Gets the metadata of the channel group.
+    pub fn get_metadata(&self) -> Option<MetaDataRef> {
+        unsafe {
+            let metadata = ffi::ChannelGroupGetMetaData(self.inner);
+            if metadata.is_null() {
+                None
+            } else {
+                Some(MetaDataRef::new(metadata))
+            }
+        }
+    }
+
+    /// Gets the source information of the channel group.
+    pub fn get_source_information(&self) -> Option<SourceInformationRef> {
+        unsafe {
+            let source_info = ffi::ChannelGroupGetSourceInformation(self.inner);
+            if source_info.is_null() {
+                None
+            } else {
+                Some(SourceInformationRef::new(source_info))
+            }
+        }
+    }
 }
 
 /// Represents a mutable reference to a channel group in an MDF file.
 #[derive(Debug)]
-pub struct ChannelGroup<'a> {
+pub struct ChannelGroup {
     pub(crate) inner: *mut ffi::IChannelGroup,
-    inner_ref: ChannelGroupRef<'a>,
+    inner_ref: ChannelGroupRef,
 }
 
-impl<'a> ChannelGroup<'a> {
+impl ChannelGroup {
     pub(crate) fn new(inner: *mut ffi::IChannelGroup) -> Self {
         Self {
             inner,
@@ -126,10 +163,34 @@ impl<'a> ChannelGroup<'a> {
             }
         }
     }
+
+    /// Creates metadata for the channel group.
+    pub fn create_metadata(&mut self) -> Option<MetaData> {
+        unsafe {
+            let metadata = ffi::ChannelGroupCreateMetaData(self.inner);
+            if metadata.is_null() {
+                None
+            } else {
+                Some(MetaData::new(metadata))
+            }
+        }
+    }
+
+    /// Creates source information for the channel group.
+    pub fn create_source_information(&mut self) -> Option<SourceInformation> {
+        unsafe {
+            let source_info = ffi::ChannelGroupCreateSourceInformation(self.inner);
+            if source_info.is_null() {
+                None
+            } else {
+                Some(SourceInformation::new(source_info))
+            }
+        }
+    }
 }
 
-impl<'a> Deref for ChannelGroup<'a> {
-    type Target = ChannelGroupRef<'a>;
+impl Deref for ChannelGroup {
+    type Target = ChannelGroupRef;
 
     fn deref(&self) -> &Self::Target {
         &self.inner_ref
