@@ -39,6 +39,13 @@ impl DataGroupRef {
         unsafe { ffi::DataGroupGetChannelGroupCount(self.inner) }
     }
 
+    pub fn get_channel_groups(&self) -> Vec<ChannelGroup> {
+        let count = self.get_channel_group_count();
+        (0..count)
+            .filter_map(|i| self.get_channel_group_by_index(i))
+            .collect()
+    }
+
     /// Gets a channel group by its index.
     pub fn get_channel_group_by_index(&self, index: usize) -> Option<ChannelGroup> {
         unsafe {
@@ -93,6 +100,10 @@ impl DataGroup {
                 Some(ChannelGroup::new(cg))
             }
         }
+    }
+
+    pub fn clear_data(&mut self) {
+        unsafe { ffi::DataGroupClearData(self.inner) }
     }
 }
 

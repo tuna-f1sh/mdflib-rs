@@ -234,6 +234,42 @@ EXPORT void MdfFileSetMinorVersion(MdfFile *file, int minor) {
   file->MinorVersion(minor);
 }
 
+EXPORT void MdfFileSetProgramId(MdfFile *file, const char *program_id) {
+  file->ProgramId(program_id);
+}
+
+EXPORT size_t MdfFileGetProgramId(const MdfFile *file, char *buffer,
+                                       size_t max_length) {
+  const std::string &program_id = file->ProgramId();
+  size_t copy_length = std::min(program_id.length(), max_length - 1);
+  if (buffer && max_length > 0) {
+    std::memcpy(buffer, program_id.c_str(), copy_length);
+    buffer[copy_length] = '\0';
+  }
+  return program_id.length();
+}
+
+// TODO these need file stream
+// EXPORT void MdfFileReadHeader(MdfFile *file) {
+//   file->ReadHeader();
+// }
+//
+// EXPORT void MdfFileReadMeasurementInfo(MdfFile *file) {
+//   file->ReadMeasurementInfo();
+// }
+//
+// EXPORT bool MdfFileWrite(MdfFile *file) {
+//   return file->Write();
+// }
+//
+// EXPORT void MdfFileReadEverythingButData(MdfFile *file) {
+//   file->ReadEverythingButData();
+// }
+
+EXPORT bool MdfFileIsFinalizedDone(const MdfFile *file) {
+  return file->IsFinalizedDone();
+}
+
 EXPORT const IHeader *MdfFileGetHeader(const MdfFile *file) {
   return file->Header();
 }
@@ -259,6 +295,21 @@ EXPORT IDataGroup *MdfFileCreateDataGroup(MdfFile *file) {
   return file->CreateDataGroup();
 }
 
+EXPORT size_t MdfFileGetDataGroups(const MdfFile *file,
+                                    IDataGroup *dest[], size_t max_count) {
+  if (!file || !dest)
+    return 0;
+
+  std::vector<IDataGroup *> temp_list;
+  file->DataGroups(temp_list);
+
+  size_t copy_count = std::min(temp_list.size(), max_count);
+  for (size_t i = 0; i < copy_count; ++i) {
+    dest[i] = temp_list[i];
+  }
+  return temp_list.size();
+}
+
 EXPORT size_t MdfFileGetAttachments(const MdfFile *file,
                                     const IAttachment *attachments[],
                                     size_t max_count) {
@@ -277,6 +328,11 @@ EXPORT size_t MdfFileGetAttachments(const MdfFile *file,
 
 EXPORT IAttachment *MdfFileCreateAttachment(MdfFile *file) {
   return file ? file->CreateAttachment() : nullptr;
+}
+
+EXPORT const IDataGroup* MdfFileFindParentDataGroup(const MdfFile *file,
+                                                    const IChannel &channel) {
+  return file->FindParentDataGroup(channel);
 }
 
 // IDataGroup functions
@@ -320,6 +376,10 @@ EXPORT IChannelGroup *DataGroupGetChannelGroupByName(
 
 EXPORT IChannelGroup *DataGroupCreateChannelGroup(IDataGroup *group) {
   return group->CreateChannelGroup();
+}
+
+EXPORT void DataGroupClearData(IDataGroup *group) {
+  group->ClearData();
 }
 
 // IChannelGroup functions

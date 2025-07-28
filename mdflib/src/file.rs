@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::os::raw::c_char;
 
 use crate::attachment::{Attachment, AttachmentRef};
-use crate::{DataGroup, DataGroupRef, MdfHeaderRef};
+use crate::{ChannelRef, DataGroup, DataGroupRef, MdfHeaderRef};
 
 #[derive(Debug, Clone, Copy)]
 pub struct MdfFileRef {
@@ -70,8 +70,32 @@ impl MdfFileRef {
         unsafe { ffi::MdfFileGetDataGroupCount(self.inner) }
     }
 
+    pub fn get_data_groups(&self) -> Vec<DataGroup> {
+        const MAX_GROUPS: usize = 1000;
+        let mut groups: Vec<*mut ffi::IDataGroup> = vec![std::ptr::null_mut(); MAX_GROUPS];
+        let count =
+            unsafe { ffi::MdfFileGetDataGroups(self.inner, groups.as_mut_ptr(), MAX_GROUPS) };
+        groups.truncate(count);
+        groups
+            .into_iter()
+            .filter(|&ptr| !ptr.is_null())
+            .map(DataGroup::new)
+            .collect()
+    }
+
     pub fn get_data_group(&self, index: usize) -> DataGroupRef {
         unsafe { DataGroupRef::new(ffi::MdfFileGetDataGroupByIndex(self.inner, index)) }
+    }
+
+    pub fn find_parent_data_group(&self, channel: &ChannelRef) -> Option<DataGroupRef> {
+        unsafe {
+            let dg = ffi::MdfFileFindParentDataGroup(self.inner, channel.as_ptr());
+            if dg.is_null() {
+                None
+            } else {
+                Some(DataGroupRef::new(dg))
+            }
+        }
     }
 
     /// Gets the attachments of the file.
@@ -88,6 +112,10 @@ impl MdfFileRef {
             .filter(|&ptr| !ptr.is_null())
             .map(AttachmentRef::new)
             .collect()
+    }
+
+    pub fn is_finalized_done(&self) -> bool {
+        unsafe { ffi::MdfFileIsFinalizedDone(self.inner) }
     }
 }
 

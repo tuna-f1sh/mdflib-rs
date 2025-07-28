@@ -77,7 +77,7 @@ fn test_channel_observer_basic() {
 
         // For a fresh observer without read data, we expect 0 samples
         // This test primarily validates that the channel observer can be created successfully
-        println!("Created channel observer with {} samples", nof_samples);
+        println!("Created channel observer with {nof_samples} samples");
     }
 }
 
@@ -183,10 +183,7 @@ fn test_channel_observer_multiple_channels() {
         for (channel_name, observer) in &observers {
             let nof_samples = observer.get_nof_samples();
 
-            println!(
-                "Created observer for channel '{}' with {} samples",
-                channel_name, nof_samples
-            );
+            println!("Created observer for channel '{channel_name}' with {nof_samples} samples");
 
             // Test that the basic observer methods work (even with 0 samples)
             let all_channel_values = observer.get_all_channel_values();

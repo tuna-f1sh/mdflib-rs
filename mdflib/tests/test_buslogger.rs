@@ -92,43 +92,51 @@ fn test_mdf4_can_bus_logger_basic() {
 
     // Test reading data with channel observers
     let file = reader.get_file().unwrap();
-    let dg_count = file.get_data_group_count();
+    let dg_group = file.get_data_groups();
+    let mut sub_list: Vec<ChannelObserver> = Vec::new();
 
-    if dg_count > 0 {
-        let dg = file.get_data_group(0);
-        let cg_count = dg.get_channel_group_count();
-
-        if cg_count > 0 {
-            let cg = dg.get_channel_group_by_index(0).unwrap();
-            let channel_count = cg.get_channel_count();
-
-            if channel_count > 0 {
-                let channel = cg.get_channel(0).unwrap();
-
-                // Create a channel observer to read the data
-                match unsafe { create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr()) }
-                {
-                    Ok(observer) => {
-                        let nof_samples = observer.get_nof_samples();
-                        println!("Created channel observer with {} samples", nof_samples);
-
-                        // Note: Without reading actual data into the observer, samples may not be valid
-                        // This test validates that the observer can be created successfully
-                        if nof_samples > 0 {
-                            // Test the observer methods work (they may return None for invalid data)
-                            let _channel_value = observer.get_channel_value(0);
-                            let _eng_value = observer.get_eng_value(0);
-
-                            // The observer creation and method calls succeed, which is the main test
-                        }
+    for mut dg in dg_group {
+        assert_eq!(
+            dg.get_channel_group_count(),
+            4,
+            "Expected 4 channel groups for CAN data"
+        );
+        let channel_groups = dg.get_channel_groups();
+        for cg in channel_groups {
+            let channels = cg.get_channels();
+            for channel in channels {
+                // Check if the channel is a CAN message channel
+                if channel.get_name().starts_with("CAN_") {
+                    let observer = unsafe {
+                        create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr())
                     }
-                    Err(_) => {
-                        // Channel observer creation might fail if no data was read
-                        // This is okay for this test since we're primarily testing the API
-                    }
+                    .expect("Failed to create channel observer");
+
+                    // Read samples from the observer
+                    let nof_samples = observer.get_nof_samples();
+                    assert!(
+                        nof_samples > 0,
+                        "No samples found for channel: {}",
+                        channel.get_name()
+                    );
+
+                    // Store the observer for later use
+                    sub_list.push(observer);
                 }
             }
         }
+
+        reader.read_data(&mut dg).unwrap();
+
+        for observer in &sub_list {
+            let nof_samples = observer.get_nof_samples();
+            assert!(nof_samples > 0, "No samples found in observer");
+            for sample in 0..nof_samples {
+                assert!(observer.get_eng_value(sample).is_some());
+            }
+        }
+
+        dg.clear_data();
     }
 }
 

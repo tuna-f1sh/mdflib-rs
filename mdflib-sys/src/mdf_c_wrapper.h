@@ -458,6 +458,15 @@ EXPORT const IDataGroup* MdfFileGetDataGroupByIndex(const MdfFile* file, size_t 
 EXPORT IDataGroup* MdfFileCreateDataGroup(MdfFile* file);
 EXPORT size_t MdfFileGetAttachments(const MdfFile* file, const IAttachment* attachments[], size_t max_count);
 EXPORT IAttachment* MdfFileCreateAttachment(MdfFile* file);
+EXPORT size_t MdfFileGetDataGroups(const MdfFile* file, IDataGroup* dest[], size_t max_count);
+EXPORT const IDataGroup* MdfFileFindParentDataGroup(const MdfFile *file, const IChannel &channel);
+EXPORT void MdfFileSetProgramId(MdfFile *file, const char *program_id);
+EXPORT size_t MdfFileGetProgramId(const MdfFile *file, char *buffer, size_t max_length);
+// EXPORT void MdfFileReadHeader(MdfFile *file);
+// EXPORT void MdfFileReadMeasurementInfo(MdfFile *file);
+// EXPORT void MdfFileReadEverythingButData(MdfFile *file);
+// EXPORT bool MdfFileWrite(MdfFile *file);
+EXPORT bool MdfFileIsFinalizedDone(const MdfFile *file);
 
 // IDataGroup functions
 EXPORT uint64_t DataGroupGetIndex(const IDataGroup* group);
@@ -467,6 +476,7 @@ EXPORT size_t DataGroupGetChannelGroupCount(const IDataGroup* group);
 EXPORT IChannelGroup* DataGroupGetChannelGroupByIndex(const IDataGroup* group, size_t index);
 EXPORT IChannelGroup* DataGroupGetChannelGroupByName(const IDataGroup* group, const char* name);
 EXPORT IChannelGroup* DataGroupCreateChannelGroup(IDataGroup* group);
+EXPORT void DataGroupClearData(IDataGroup *group);
 
 // IChannelGroup functions
 EXPORT uint64_t ChannelGroupGetIndex(const IChannelGroup* group);

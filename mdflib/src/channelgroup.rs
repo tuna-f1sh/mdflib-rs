@@ -84,6 +84,11 @@ impl ChannelGroupRef {
         }
     }
 
+    pub fn get_channels(&self) -> Vec<ChannelRef> {
+        let count = self.get_channel_count();
+        (0..count).filter_map(|i| self.get_channel(i)).collect()
+    }
+
     /// Gets the metadata of the channel group.
     pub fn get_metadata(&self) -> Option<MetaDataRef> {
         unsafe {
