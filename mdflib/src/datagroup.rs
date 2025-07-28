@@ -16,6 +16,12 @@ impl DataGroupRef {
         Self { inner }
     }
 
+    /// Gets the raw pointer to the underlying IDataGroup.
+    /// This is used for advanced operations like creating channel observers.
+    pub fn as_ptr(&self) -> *const ffi::IDataGroup {
+        self.inner
+    }
+
     pub fn get_description(&self) -> String {
         unsafe {
             let mut len = ffi::DataGroupGetDescription(self.inner, std::ptr::null_mut(), 0);

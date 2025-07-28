@@ -23,6 +23,12 @@ impl ChannelGroupRef {
         Self { inner }
     }
 
+    /// Gets the raw pointer to the underlying IChannelGroup.
+    /// This is used for advanced operations like creating channel observers.
+    pub fn as_ptr(&self) -> *const ffi::IChannelGroup {
+        self.inner
+    }
+
     /// Gets the index of the channel group.
     pub fn get_index(&self) -> u64 {
         unsafe { ffi::ChannelGroupGetIndex(self.inner) }

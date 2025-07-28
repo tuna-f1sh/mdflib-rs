@@ -26,6 +26,7 @@ typedef struct IEvent IEvent;
 typedef struct ETag ETag;
 typedef struct IMetaData IMetaData;
 typedef struct CanMessage CanMessage;
+typedef struct IChannelObserver IChannelObserver;
 
 enum class MdfWriterType : int {
   Mdf3Basic = 0, ///< Basic MDF version 3 writer.
@@ -720,6 +721,14 @@ EXPORT size_t CanMessageGetDataBytesConst(const CanMessage* can, uint8_t* dataLi
 EXPORT void CanMessageSetDataBytes(CanMessage* can, const uint8_t* dataList, size_t size);
 EXPORT uint32_t CanMessageGetBusChannel(const CanMessage* can);
 EXPORT void CanMessageSetBusChannel(CanMessage* can, uint32_t busChannel);
+
+// IChannelObserver functions
+EXPORT IChannelObserver* CreateChannelObserver(const IDataGroup* dataGroup, const IChannelGroup* channelGroup, const IChannel* channel);
+EXPORT void ChannelObserverUnInit(IChannelObserver* observer);
+EXPORT size_t ChannelObserverGetNofSamples(const IChannelObserver* observer);
+EXPORT bool ChannelObserverGetChannelValue(const IChannelObserver* observer, size_t sample, double* value);
+EXPORT bool ChannelObserverGetEngValue(const IChannelObserver* observer, size_t sample, double* value);
+EXPORT bool ChannelObserverGetValid(const IChannelObserver* observer, size_t sample);
 
 #ifdef __cplusplus
 }

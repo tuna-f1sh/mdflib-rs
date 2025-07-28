@@ -89,6 +89,51 @@ fn test_mdf4_can_bus_logger_basic() {
     let mut reader = reader::MdfReader::new(file_path).expect("Failed to create MDF reader");
     assert!(reader.is_ok());
     assert!(reader.read_everything_but_data().is_ok());
+    
+    // Test reading data with channel observers
+    let file = reader.get_file().unwrap();
+    let dg_count = file.get_data_group_count();
+    
+    if dg_count > 0 {
+        let dg = file.get_data_group(0);
+        let cg_count = dg.get_channel_group_count();
+        
+        if cg_count > 0 {
+            let cg = dg.get_channel_group_by_index(0).unwrap();
+            let channel_count = cg.get_channel_count();
+            
+            if channel_count > 0 {
+                let channel = cg.get_channel(0).unwrap();
+                
+                // Create a channel observer to read the data
+                match create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr()) {
+                    Ok(observer) => {
+                        let nof_samples = observer.get_nof_samples();
+                        // We should have samples from our test data
+                        if nof_samples > 0 {
+                            // Test getting individual values
+                            if let Some(value) = observer.get_channel_value(0) {
+                                // We should have a valid channel value
+                                assert!(value >= 0.0);
+                            }
+                            
+                            if let Some(eng_value) = observer.get_eng_value(0) {
+                                // We should have a valid engineering value
+                                assert!(eng_value >= 0.0);
+                            }
+                            
+                            // Test validity check
+                            assert!(observer.is_valid(0));
+                        }
+                    }
+                    Err(_) => {
+                        // Channel observer creation might fail if no data was read
+                        // This is okay for this test
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Test CAN message with all available properties

@@ -32,6 +32,7 @@ pub mod writer;
 // New MDF object modules
 pub mod attachment;
 pub mod channelarray;
+pub mod channelobserver;
 pub mod channelconversion;
 pub mod etag;
 pub mod event;
@@ -51,6 +52,7 @@ pub use reader::MdfReader;
 // Re-export new MDF object types
 pub use attachment::{Attachment, AttachmentRef};
 pub use channelarray::{ChannelArray, ChannelArrayRef};
+pub use channelobserver::{create_channel_observer, ChannelObserver, ChannelObserverRef};
 pub use channelconversion::{ChannelConversion, ChannelConversionRef};
 pub use etag::{ETag, ETagRef};
 pub use event::{Event, EventRef};

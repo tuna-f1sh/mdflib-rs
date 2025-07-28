@@ -24,6 +24,12 @@ impl<'a> ChannelRef<'a> {
         }
     }
 
+    /// Gets the raw pointer to the underlying IChannel.
+    /// This is used for advanced operations like creating channel observers.
+    pub fn as_ptr(&self) -> *const ffi::IChannel {
+        self.inner
+    }
+
     /// Gets the index of the channel.
     pub fn get_index(&self) -> u64 {
         unsafe { ffi::ChannelGetIndex(self.inner) }

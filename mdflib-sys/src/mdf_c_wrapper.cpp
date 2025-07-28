@@ -10,6 +10,7 @@
 #include <mdf/ichannelarray.h>
 #include <mdf/ichannelconversion.h>
 #include <mdf/ichannelgroup.h>
+#include <mdf/ichannelobserver.h>
 #include <mdf/idatagroup.h>
 #include <mdf/ievent.h>
 #include <mdf/ifilehistory.h>
@@ -1654,6 +1655,45 @@ ChannelConversionGetMetaData(const IChannelConversion *conversion) {
 EXPORT IMetaData *
 ChannelConversionCreateMetaData(IChannelConversion *conversion) {
   return conversion->CreateMetaData();
+}
+
+// IChannelObserver functions
+EXPORT IChannelObserver* CreateChannelObserver(const IDataGroup* dataGroup, const IChannelGroup* channelGroup, const IChannel* channel) {
+  if (!dataGroup || !channelGroup || !channel) {
+    return nullptr;
+  }
+  auto observer_ptr = mdf::CreateChannelObserver(*dataGroup, *channelGroup, *channel);
+  return observer_ptr.release();
+}
+
+EXPORT void ChannelObserverUnInit(IChannelObserver* observer) {
+  delete observer;
+}
+
+EXPORT size_t ChannelObserverGetNofSamples(const IChannelObserver* observer) {
+  return observer ? observer->NofSamples() : 0;
+}
+
+EXPORT bool ChannelObserverGetChannelValue(const IChannelObserver* observer, size_t sample, double* value) {
+  if (!observer || !value) {
+    return false;
+  }
+  return observer->GetChannelValue(sample, *value);
+}
+
+EXPORT bool ChannelObserverGetEngValue(const IChannelObserver* observer, size_t sample, double* value) {
+  if (!observer || !value) {
+    return false;
+  }
+  return observer->GetEngValue(sample, *value);
+}
+
+EXPORT bool ChannelObserverGetValid(const IChannelObserver* observer, size_t sample) {
+  if (!observer) {
+    return false;
+  }
+  const auto& valid_list = observer->GetValidList();
+  return sample < valid_list.size() && valid_list[sample];
 }
 
 } // extern "C"
