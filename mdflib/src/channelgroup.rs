@@ -8,6 +8,11 @@ use crate::metadata::{MetaData, MetaDataRef};
 use crate::sourceinformation::{SourceInformation, SourceInformationRef};
 
 /// Represents an immutable reference to a channel group in an MDF file.
+///
+/// # Safety
+/// This type holds a raw pointer to a C++ object. The pointer is only valid
+/// as long as the parent MDF file/writer object exists. Do not use this
+/// reference after the parent object has been dropped.
 #[derive(Debug, Clone, Copy)]
 pub struct ChannelGroupRef {
     pub(crate) inner: *const ffi::IChannelGroup,

@@ -157,13 +157,13 @@ EXPORT bool MdfWriterInitMeasurement(MdfWriter *writer) {
   return writer->InitMeasurement();
 }
 
-EXPORT void MdfWriterSaveSample(MdfWriter *writer, IChannelGroup *group,
+EXPORT void MdfWriterSaveSample(MdfWriter *writer, const IChannelGroup *group,
                                 uint64_t time) {
   writer->SaveSample(*group, time);
 }
 
-EXPORT void MdfWriterSaveCanMessage(MdfWriter *writer, IChannelGroup *group,
-                                    uint64_t time, CanMessage *message) {
+EXPORT void MdfWriterSaveCanMessage(MdfWriter *writer, const IChannelGroup *group,
+                                    uint64_t time, const CanMessage *message) {
   writer->SaveCanMessage(*group, time, *message);
 }
 
@@ -773,13 +773,23 @@ EXPORT uint32_t CanMessageGetMessageId(CanMessage *can) {
   return can->MessageId();
 }
 
+EXPORT uint32_t CanMessageGetMessageIdConst(const CanMessage *can) {
+  return can->MessageId();
+}
+
 EXPORT void CanMessageSetMessageId(CanMessage *can, uint32_t msgId) {
   can->MessageId(msgId);
 }
 
 EXPORT uint32_t CanMessageGetCanId(CanMessage *can) { return can->CanId(); }
 
+EXPORT uint32_t CanMessageGetCanIdConst(const CanMessage *can) { return can->CanId(); }
+
 EXPORT bool CanMessageGetExtendedId(CanMessage *can) {
+  return can->ExtendedId();
+}
+
+EXPORT bool CanMessageGetExtendedIdConst(const CanMessage *can) {
   return can->ExtendedId();
 }
 
@@ -789,9 +799,15 @@ EXPORT void CanMessageSetExtendedId(CanMessage *can, bool extendedId) {
 
 EXPORT uint8_t CanMessageGetDlc(CanMessage *can) { return can->Dlc(); }
 
+EXPORT uint8_t CanMessageGetDlcConst(const CanMessage *can) { return can->Dlc(); }
+
 EXPORT void CanMessageSetDlc(CanMessage *can, uint8_t dlc) { can->Dlc(dlc); }
 
 EXPORT size_t CanMessageGetDataLength(CanMessage *can) {
+  return can->DataLength();
+}
+
+EXPORT size_t CanMessageGetDataLengthConst(const CanMessage *can) {
   return can->DataLength();
 }
 
@@ -801,6 +817,16 @@ EXPORT void CanMessageSetDataLength(CanMessage *can, uint32_t dataLength) {
 
 EXPORT size_t CanMessageGetDataBytes(CanMessage *can, uint8_t *dataList,
                                      size_t max_length) {
+  const auto &data = can->DataBytes();
+  size_t copy_length = std::min(data.size(), max_length);
+  if (dataList && max_length > 0) {
+    std::memcpy(dataList, data.data(), copy_length);
+  }
+  return data.size();
+}
+
+EXPORT size_t CanMessageGetDataBytesConst(const CanMessage *can, uint8_t *dataList,
+                                          size_t max_length) {
   const auto &data = can->DataBytes();
   size_t copy_length = std::min(data.size(), max_length);
   if (dataList && max_length > 0) {

@@ -1,10 +1,68 @@
 use mdflib_sys as ffi;
 use std::marker::PhantomData;
+use std::ops::Deref;
 
+/// Represents an immutable reference to a CAN message.
+#[derive(Debug, Clone, Copy)]
+pub struct CanMessageRef<'a> {
+    pub(crate) inner: *const ffi::CanMessage,
+    _marker: PhantomData<&'a ()>,
+}
+
+impl<'a> CanMessageRef<'a> {
+    pub(crate) fn new(inner: *const ffi::CanMessage) -> Self {
+        Self {
+            inner,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Gets the message ID.
+    pub fn get_message_id(&self) -> u32 {
+        unsafe { ffi::CanMessageGetMessageIdConst(self.inner) }
+    }
+
+    /// Gets the CAN ID.
+    pub fn get_can_id(&self) -> u32 {
+        unsafe { ffi::CanMessageGetCanIdConst(self.inner) }
+    }
+
+    /// Checks if the extended ID is set.
+    pub fn get_extended_id(&self) -> bool {
+        unsafe { ffi::CanMessageGetExtendedIdConst(self.inner) }
+    }
+
+    /// Gets the DLC (Data Length Code).
+    pub fn get_dlc(&self) -> u8 {
+        unsafe { ffi::CanMessageGetDlcConst(self.inner) }
+    }
+
+    /// Gets the data length.
+    pub fn get_data_length(&self) -> usize {
+        unsafe { ffi::CanMessageGetDataLengthConst(self.inner) }
+    }
+
+    /// Gets the data bytes.
+    pub fn get_data_bytes(&self) -> Vec<u8> {
+        unsafe {
+            let len = ffi::CanMessageGetDataLengthConst(self.inner);
+            let mut buf = vec![0u8; len];
+            ffi::CanMessageGetDataBytesConst(self.inner, buf.as_mut_ptr(), len);
+            buf
+        }
+    }
+
+    /// Gets the bus channel.
+    pub fn get_bus_channel(&self) -> u32 {
+        unsafe { ffi::CanMessageGetBusChannel(self.inner) }
+    }
+}
+
+/// Represents a mutable CAN message.
 #[derive(Debug)]
 pub struct CanMessage<'a> {
     pub(crate) inner: *mut ffi::CanMessage,
-    _marker: PhantomData<&'a ()>,
+    inner_ref: CanMessageRef<'a>,
 }
 
 impl Default for CanMessage<'_> {
@@ -20,14 +78,9 @@ impl<'a> CanMessage<'a> {
             let msg = ffi::CanMessageInit();
             Self {
                 inner: msg,
-                _marker: PhantomData,
+                inner_ref: CanMessageRef::new(msg),
             }
         }
-    }
-
-    /// Gets the message ID.
-    pub fn get_message_id(&self) -> u32 {
-        unsafe { ffi::CanMessageGetMessageId(self.inner) }
     }
 
     /// Sets the message ID.
@@ -35,24 +88,9 @@ impl<'a> CanMessage<'a> {
         unsafe { ffi::CanMessageSetMessageId(self.inner, msg_id) }
     }
 
-    /// Gets the CAN ID.
-    pub fn get_can_id(&self) -> u32 {
-        unsafe { ffi::CanMessageGetCanId(self.inner) }
-    }
-
-    /// Checks if the extended ID is set.
-    pub fn get_extended_id(&self) -> bool {
-        unsafe { ffi::CanMessageGetExtendedId(self.inner) }
-    }
-
     /// Sets the extended ID.
     pub fn set_extended_id(&mut self, extended_id: bool) {
         unsafe { ffi::CanMessageSetExtendedId(self.inner, extended_id) }
-    }
-
-    /// Gets the DLC (Data Length Code).
-    pub fn get_dlc(&self) -> u8 {
-        unsafe { ffi::CanMessageGetDlc(self.inner) }
     }
 
     /// Sets the DLC (Data Length Code).
@@ -60,24 +98,9 @@ impl<'a> CanMessage<'a> {
         unsafe { ffi::CanMessageSetDlc(self.inner, dlc) }
     }
 
-    /// Gets the data length.
-    pub fn get_data_length(&self) -> usize {
-        unsafe { ffi::CanMessageGetDataLength(self.inner) }
-    }
-
     /// Sets the data length.
     pub fn set_data_length(&mut self, data_length: u32) {
         unsafe { ffi::CanMessageSetDataLength(self.inner, data_length) }
-    }
-
-    /// Gets the data bytes.
-    pub fn get_data_bytes(&self) -> Vec<u8> {
-        unsafe {
-            let len = ffi::CanMessageGetDataLength(self.inner);
-            let mut buf = vec![0u8; len];
-            ffi::CanMessageGetDataBytes(self.inner, buf.as_mut_ptr(), len);
-            buf
-        }
     }
 
     /// Sets the data bytes.
@@ -87,14 +110,17 @@ impl<'a> CanMessage<'a> {
         }
     }
 
-    /// Gets the bus channel.
-    pub fn get_bus_channel(&self) -> u32 {
-        unsafe { ffi::CanMessageGetBusChannel(self.inner) }
-    }
-
     /// Sets the bus channel.
     pub fn set_bus_channel(&mut self, bus_channel: u32) {
         unsafe { ffi::CanMessageSetBusChannel(self.inner, bus_channel) }
+    }
+}
+
+impl<'a> Deref for CanMessage<'a> {
+    type Target = CanMessageRef<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner_ref
     }
 }
 

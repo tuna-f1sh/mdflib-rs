@@ -3,7 +3,7 @@ use std::ffi::{CStr, CString};
 use std::ops::Deref;
 use std::os::raw::c_char;
 
-use crate::channelgroup::ChannelGroup;
+use crate::channelgroup::{ChannelGroup, ChannelGroupRef};
 
 /// Represents an immutable reference to a data group in an MDF file.
 #[derive(Debug, Clone, Copy)]
@@ -53,6 +53,18 @@ impl DataGroupRef {
                 None
             } else {
                 Some(ChannelGroup::new(cg))
+            }
+        }
+    }
+
+    pub fn get_channel_group_ref(&self, name: &str) -> Option<ChannelGroupRef> {
+        let c_name = CString::new(name).unwrap();
+        unsafe {
+            let cg = ffi::DataGroupGetChannelGroupByName(self.inner, c_name.as_ptr());
+            if cg.is_null() {
+                None
+            } else {
+                Some(ChannelGroupRef::new(cg))
             }
         }
     }

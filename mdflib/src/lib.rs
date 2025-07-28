@@ -39,7 +39,7 @@ pub mod filehistory;
 pub mod metadata;
 pub mod sourceinformation;
 
-pub use canmessage::CanMessage;
+pub use canmessage::{CanMessage, CanMessageRef};
 pub use channel::{Channel, ChannelRef};
 pub use channelgroup::{ChannelGroup, ChannelGroupRef};
 pub use datagroup::{DataGroup, DataGroupRef};

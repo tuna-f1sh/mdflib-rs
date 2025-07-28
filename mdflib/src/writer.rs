@@ -1,6 +1,6 @@
 //! MDF file writer implementation
 use crate::{
-    canmessage::CanMessage,
+    canmessage::CanMessageRef,
     channelgroup::ChannelGroupRef,
     datagroup::DataGroup,
     error::{MdfError, Result},
@@ -56,6 +56,17 @@ impl MdfWriter {
                 Some(MdfHeader::new(header))
             }
         }
+    }
+
+    /// Gets a channel group by name from the last data group.
+    ///
+    /// # Safety
+    /// The returned ChannelGroupRef is only valid as long as this MdfWriter exists.
+    /// Do not use the returned reference after the writer has been dropped.
+    pub fn get_channel_group(&self, name: &str) -> Option<ChannelGroupRef> {
+        let header = self.get_header()?;
+        let last_dg = header.get_last_data_group()?;
+        last_dg.get_channel_group_ref(name)
     }
 
     /// Check if the file is new
@@ -127,7 +138,7 @@ impl MdfWriter {
 
     /// Save a sample
     pub fn save_sample(&mut self, group: &ChannelGroupRef, time: u64) {
-        unsafe { MdfWriterSaveSample(self.inner, group.inner as *mut _, time) }
+        unsafe { MdfWriterSaveSample(self.inner, group.inner, time) }
     }
 
     /// Save a CAN message
@@ -135,9 +146,9 @@ impl MdfWriter {
         &mut self,
         group: &ChannelGroupRef,
         time: u64,
-        message: &mut CanMessage,
+        message: &CanMessageRef,
     ) {
-        unsafe { MdfWriterSaveCanMessage(self.inner, group.inner as *mut _, time, message.inner) }
+        unsafe { MdfWriterSaveCanMessage(self.inner, group.inner, time, message.inner) }
     }
 
     /// Start measurement

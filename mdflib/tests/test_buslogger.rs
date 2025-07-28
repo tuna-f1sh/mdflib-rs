@@ -65,17 +65,12 @@ fn test_mdf4_can_bus_logger_basic() {
     }
 
     let start_time = 1753689305;
-    
-    // Get channel groups - do this in a separate scope
-    let (can_data_group, can_remote_group, can_error_group, can_overload_group) = {
-        let header = writer.get_header().unwrap();
-        let last_dg = header.get_last_data_group().unwrap();
-        let can_data_group = last_dg.get_channel_group("CAN_DataFrame").unwrap();
-        let can_remote_group = last_dg.get_channel_group("CAN_RemoteFrame").unwrap();
-        let can_error_group = last_dg.get_channel_group("CAN_ErrorFrame").unwrap();
-        let can_overload_group = last_dg.get_channel_group("CAN_OverloadFrame").unwrap();
-        (can_data_group, can_remote_group, can_error_group, can_overload_group)
-    };
+
+    // Get channel groups using convenience methods
+    let can_data_group = writer.get_channel_group("CAN_DataFrame").unwrap();
+    let can_remote_group = writer.get_channel_group("CAN_RemoteFrame").unwrap();
+    let can_error_group = writer.get_channel_group("CAN_ErrorFrame").unwrap();
+    let can_overload_group = writer.get_channel_group("CAN_OverloadFrame").unwrap();
 
     // Write 5000 random CAN messages
     for i in 0..5000 {
@@ -88,10 +83,10 @@ fn test_mdf4_can_bus_logger_basic() {
         let data = vec![i as u8; 8]; // Fill with the same byte for simplicity
         msg.set_data_bytes(&data);
 
-        writer.save_can_message(&can_data_group, start_time + i, &mut msg);
-        writer.save_can_message(&can_remote_group, start_time + i, &mut msg);
-        writer.save_can_message(&can_error_group, start_time + i, &mut msg);
-        writer.save_can_message(&can_overload_group, start_time + i, &mut msg);
+        writer.save_can_message(&can_data_group, start_time + i, &msg);
+        writer.save_can_message(&can_remote_group, start_time + i, &msg);
+        writer.save_can_message(&can_error_group, start_time + i, &msg);
+        writer.save_can_message(&can_overload_group, start_time + i, &msg);
     }
 
     writer.stop_measurement(start_time + 5000);
