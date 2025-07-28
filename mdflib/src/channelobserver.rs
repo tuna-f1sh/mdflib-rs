@@ -7,7 +7,7 @@ use mdflib_sys as ffi;
 use std::marker::PhantomData;
 
 /// Represents an immutable reference to a channel observer in an MDF file.
-/// 
+///
 /// A channel observer holds all sample data for a specific channel and provides
 /// methods to access channel values and engineering values.
 #[derive(Debug, Clone, Copy)]
@@ -39,9 +39,7 @@ impl<'a> ChannelObserverRef<'a> {
     /// Returns `Some(value)` if the sample is valid, `None` otherwise.
     pub fn get_channel_value(&self, sample: usize) -> Option<f64> {
         let mut value = 0.0;
-        let valid = unsafe {
-            ffi::ChannelObserverGetChannelValue(self.inner, sample, &mut value)
-        };
+        let valid = unsafe { ffi::ChannelObserverGetChannelValue(self.inner, sample, &mut value) };
         if valid {
             Some(value)
         } else {
@@ -58,9 +56,7 @@ impl<'a> ChannelObserverRef<'a> {
     /// Returns `Some(value)` if the sample is valid, `None` otherwise.
     pub fn get_eng_value(&self, sample: usize) -> Option<f64> {
         let mut value = 0.0;
-        let valid = unsafe {
-            ffi::ChannelObserverGetEngValue(self.inner, sample, &mut value)
-        };
+        let valid = unsafe { ffi::ChannelObserverGetEngValue(self.inner, sample, &mut value) };
         if valid {
             Some(value)
         } else {
@@ -107,7 +103,7 @@ impl<'a> ChannelObserverRef<'a> {
 }
 
 /// Represents a mutable channel observer in an MDF file.
-/// 
+///
 /// This wrapper provides ownership of the underlying IChannelObserver and automatically
 /// cleans up resources when dropped.
 #[derive(Debug)]
@@ -131,9 +127,7 @@ impl<'a> std::ops::Deref for ChannelObserver<'a> {
     type Target = ChannelObserverRef<'a>;
 
     fn deref(&self) -> &Self::Target {
-        unsafe {
-            &*(self as *const ChannelObserver as *const ChannelObserverRef)
-        }
+        unsafe { &*(self as *const ChannelObserver as *const ChannelObserverRef) }
     }
 }
 
@@ -158,7 +152,7 @@ unsafe impl<'a> Sync for ChannelObserver<'a> {}
 /// from a channel. The observer holds all sample data for the channel in memory.
 ///
 /// # Safety
-/// 
+///
 /// This function is unsafe because it takes raw pointers to C++ objects. The caller
 /// must ensure that:
 /// - The pointers are valid and point to live objects
@@ -176,7 +170,7 @@ unsafe impl<'a> Sync for ChannelObserver<'a> {}
 /// # Example
 /// ```no_run
 /// use mdflib::*;
-/// 
+///
 /// # fn example() -> mdflib::Result<()> {
 /// let reader = reader::MdfReader::new("example.mf4")?;
 /// // ... get data_group, channel_group, and channel from file ...
@@ -184,12 +178,12 @@ unsafe impl<'a> Sync for ChannelObserver<'a> {}
 /// # let data_group = file.get_data_group(0);
 /// # let channel_group = data_group.get_channel_group_by_index(0).unwrap();
 /// # let channel = channel_group.get_channel(0).unwrap();
-/// 
+///
 /// let observer = unsafe {
 ///     create_channel_observer(data_group.as_ptr(), channel_group.as_ptr(), channel.as_ptr())?
 /// };
 /// let nof_samples = observer.get_nof_samples();
-/// 
+///
 /// for sample in 0..nof_samples {
 ///     if let Some(value) = observer.get_eng_value(sample) {
 ///         println!("Sample {}: {}", sample, value);
@@ -203,14 +197,12 @@ pub unsafe fn create_channel_observer<'a>(
     channel_group: *const ffi::IChannelGroup,
     channel: *const ffi::IChannel,
 ) -> Result<ChannelObserver<'a>> {
-    let observer = unsafe {
-        ffi::CreateChannelObserver(data_group, channel_group, channel)
-    };
-    
+    let observer = unsafe { ffi::CreateChannelObserver(data_group, channel_group, channel) };
+
     if observer.is_null() {
         return Err(crate::error::MdfError::NullPointer);
     }
-    
+
     Ok(ChannelObserver::new(observer))
 }
 

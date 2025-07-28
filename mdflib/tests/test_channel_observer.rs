@@ -49,31 +49,32 @@ fn test_channel_observer_basic() {
 
         let file = reader.get_file().unwrap();
         let dg_count = file.get_data_group_count();
-        
+
         assert!(dg_count > 0, "Should have at least one data group");
-        
+
         let dg = file.get_data_group(0);
         let cg_count = dg.get_channel_group_count();
-        
+
         assert!(cg_count > 0, "Should have at least one channel group");
-        
+
         let cg = dg.get_channel_group_by_index(0).unwrap();
         let channel_count = cg.get_channel_count();
-        
+
         assert!(channel_count > 0, "Should have at least one channel");
-        
+
         let channel = cg.get_channel(0).unwrap();
-        
+
         // Read the actual data into the data group
         // Note: For a proper test, we would need a DataGroup (not DataGroupRef)
         // and actual sample data. For now, we just test channel observer creation
-        
+
         // Create a channel observer to read the sample data
-        let observer = unsafe { create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr()) }
-            .expect("Should be able to create channel observer");
-        
+        let observer =
+            unsafe { create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr()) }
+                .expect("Should be able to create channel observer");
+
         let nof_samples = observer.get_nof_samples();
-        
+
         // For a fresh observer without read data, we expect 0 samples
         // This test primarily validates that the channel observer can be created successfully
         println!("Created channel observer with {} samples", nof_samples);
@@ -131,7 +132,7 @@ fn test_channel_observer_multiple_channels() {
         assert!(reader.read_everything_but_data().is_ok());
 
         let file = reader.get_file().unwrap();
-        
+
         // This follows the pattern from the documentation example:
         // for (auto* dg4 : dg_list) {
         //   ChannelObserverList subscriber_list;
@@ -143,30 +144,32 @@ fn test_channel_observer_multiple_channels() {
         //       subscriber_list.emplace_back(std::move(sub));
         //     }
         //   }
-        
+
         let mut observers = Vec::new();
-        
+
         for dg_index in 0..file.get_data_group_count() {
             let dg = file.get_data_group(dg_index);
-            
+
             // Note: We can't read data from DataGroupRef, only from DataGroup
             // This test demonstrates creating channel observers for the structure
-            
+
             for cg_index in 0..dg.get_channel_group_count() {
                 let cg = dg.get_channel_group_by_index(cg_index).unwrap();
-                
+
                 for ch_index in 0..cg.get_channel_count() {
                     let channel = cg.get_channel(ch_index).unwrap();
-                    
+
                     // Create a channel observer for each channel
-                    let observer = unsafe { create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr()) }
-                        .expect("Should be able to create channel observer");
-                    
+                    let observer = unsafe {
+                        create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr())
+                    }
+                    .expect("Should be able to create channel observer");
+
                     observers.push((channel.get_name(), observer));
                 }
             }
         }
-        
+
         // Process all the observers - similar to the documentation example:
         // for (auto& obs : subscriber_list) {
         //   for (size_t sample = 0; sample < obs->NofSamples(); ++sample) {
@@ -174,18 +177,21 @@ fn test_channel_observer_multiple_channels() {
         //     const auto eng_valid = obs->GetEngValue(sample, eng_value);
         //   }
         // }
-        
+
         assert!(!observers.is_empty(), "Should have created some observers");
-        
+
         for (channel_name, observer) in &observers {
             let nof_samples = observer.get_nof_samples();
-            
-            println!("Created observer for channel '{}' with {} samples", channel_name, nof_samples);
-            
+
+            println!(
+                "Created observer for channel '{}' with {} samples",
+                channel_name, nof_samples
+            );
+
             // Test that the basic observer methods work (even with 0 samples)
             let all_channel_values = observer.get_all_channel_values();
             let all_eng_values = observer.get_all_eng_values();
-            
+
             assert_eq!(all_channel_values.len(), nof_samples);
             assert_eq!(all_eng_values.len(), nof_samples);
         }
