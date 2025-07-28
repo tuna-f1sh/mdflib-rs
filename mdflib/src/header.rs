@@ -5,6 +5,7 @@ use std::ops::Deref;
 use std::os::raw::c_char;
 
 use crate::attachment::{Attachment, AttachmentRef};
+use crate::datagroup::{DataGroup, DataGroupRef};
 use crate::event::{Event, EventRef};
 use crate::filehistory::{FileHistory, FileHistoryRef};
 use crate::metadata::{MetaData, MetaDataRef};
@@ -358,6 +359,34 @@ impl<'a> MdfHeader<'a> {
                 None
             } else {
                 Some(Event::new(event))
+            }
+        }
+    }
+
+    /// Gets all data groups from the header.
+    pub fn get_data_groups(&self) -> Vec<DataGroupRef> {
+        const MAX_DATA_GROUPS: usize = 1000;
+        let mut data_groups: Vec<*const ffi::IDataGroup> = vec![std::ptr::null(); MAX_DATA_GROUPS];
+        let count = unsafe {
+            ffi::IHeaderGetDataGroups(self.inner, data_groups.as_mut_ptr(), MAX_DATA_GROUPS)
+        };
+
+        data_groups.truncate(count);
+        data_groups
+            .into_iter()
+            .filter(|&ptr| !ptr.is_null())
+            .map(DataGroupRef::new)
+            .collect()
+    }
+
+    /// Gets the last data group from the header.
+    pub fn get_last_data_group(&self) -> Option<DataGroup> {
+        unsafe {
+            let data_group = ffi::IHeaderLastDataGroup(self.inner);
+            if data_group.is_null() {
+                None
+            } else {
+                Some(DataGroup::new(data_group))
             }
         }
     }

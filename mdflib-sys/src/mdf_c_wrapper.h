@@ -128,7 +128,8 @@ EXPORT uint64_t DataGroupGetIndex(const IDataGroup* group);
 EXPORT size_t DataGroupGetDescription(const IDataGroup* group, char* description, size_t max_length);
 EXPORT void DataGroupSetDescription(IDataGroup* group, const char* description);
 EXPORT size_t DataGroupGetChannelGroupCount(const IDataGroup* group);
-EXPORT const IChannelGroup* DataGroupGetChannelGroupByIndex(const IDataGroup* group, size_t index);
+EXPORT IChannelGroup* DataGroupGetChannelGroupByIndex(const IDataGroup* group, size_t index);
+EXPORT IChannelGroup* DataGroupGetChannelGroupByName(const IDataGroup* group, const char* name);
 EXPORT IChannelGroup* DataGroupCreateChannelGroup(IDataGroup* group);
 
 // IChannelGroup functions
@@ -204,6 +205,8 @@ EXPORT size_t IHeaderGetFileHistories(const IHeader* header, const IFileHistory*
 EXPORT IFileHistory* IHeaderCreateFileHistory(IHeader* header);
 EXPORT size_t IHeaderGetEvents(const IHeader* header, const IEvent* events[], size_t max_count);
 EXPORT IEvent* IHeaderCreateEvent(IHeader* header);
+EXPORT IDataGroup *IHeaderLastDataGroup(IHeader *header);
+EXPORT size_t IHeaderGetDataGroups(const IHeader *header, const IDataGroup *groups[], size_t max_count);
 
 // ISourceInformation functions
 EXPORT uint64_t SourceInformationGetIndex(const ISourceInformation* source);
@@ -374,6 +377,8 @@ EXPORT size_t CanMessageGetDataLength(CanMessage* can);
 EXPORT void CanMessageSetDataLength(CanMessage* can, uint32_t dataLength);
 EXPORT size_t CanMessageGetDataBytes(CanMessage* can, uint8_t* dataList, size_t max_length);
 EXPORT void CanMessageSetDataBytes(CanMessage* can, const uint8_t* dataList, size_t size);
+EXPORT uint32_t CanMessageGetBusChannel(const CanMessage* can);
+EXPORT void CanMessageSetBusChannel(CanMessage* can, uint32_t busChannel);
 
 #ifdef __cplusplus
 }

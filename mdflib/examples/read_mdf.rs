@@ -57,7 +57,7 @@ fn main() -> Result<()> {
         println!("Data Group 0 Description: {description}");
         let channels = data.get_channel_group_count();
         for i in 0..channels {
-            if let Some(channel_group) = data.get_channel_group(i) {
+            if let Some(channel_group) = data.get_channel_group_by_index(i) {
                 let cg_name = channel_group.get_name();
                 let cg_description = channel_group.get_description();
                 println!("Channel Group {i}: {cg_name}/{cg_description}");

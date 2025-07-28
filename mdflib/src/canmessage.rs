@@ -86,6 +86,16 @@ impl<'a> CanMessage<'a> {
             ffi::CanMessageSetDataBytes(self.inner, data.as_ptr(), data.len());
         }
     }
+
+    /// Gets the bus channel.
+    pub fn get_bus_channel(&self) -> u32 {
+        unsafe { ffi::CanMessageGetBusChannel(self.inner) }
+    }
+
+    /// Sets the bus channel.
+    pub fn set_bus_channel(&mut self, bus_channel: u32) {
+        unsafe { ffi::CanMessageSetBusChannel(self.inner, bus_channel) }
+    }
 }
 
 impl<'a> Drop for CanMessage<'a> {

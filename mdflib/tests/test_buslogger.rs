@@ -40,14 +40,57 @@ fn test_mdf4_can_bus_logger_basic() {
     let temp_file = NamedTempFile::new().unwrap();
     let file_path = temp_file.path();
 
-    let _writer = writer::MdfWriter::new(
+    let mut writer = writer::MdfWriter::new(
         mdflib_sys::MdfWriterType::MdfWriterType_BusLogger,
         file_path,
     )
     .expect("Failed to create MDF bus logger writer");
 
-    // Test that the bus logger writer can be created
-    // This validates that our wrapper supports the bus logger type
+    writer.set_bus_type(0x01);
+    assert!(writer.create_bus_log_configuration());
+
+    writer.init_measurement();
+    writer.start_measurement(0);
+    writer.set_pre_trig_time(0.0);
+    writer.set_compress_data(false);
+
+    let mut header = writer.get_header().unwrap();
+    let mut history = header.create_file_history().unwrap();
+    history.set_description("Test MDF4 CAN bus logger");
+    history.set_tool_name("mdflib-rs");
+    history.set_tool_version("0.1.0");
+    history.set_user_name("Test User");
+
+    let start_time = 1753689305;
+    let last_dg = header.get_last_data_group().unwrap();
+    let mut can_data_group = last_dg.get_channel_group("CAN_DataFrame").unwrap();
+    let mut can_remote_group = last_dg.get_channel_group("CAN_RemoteFrame").unwrap();
+    let mut can_error_group = last_dg.get_channel_group("CAN_ErrorFrame").unwrap();
+    let mut can_overload_group = last_dg.get_channel_group("CAN_OverloadFrame").unwrap();
+
+    // Write 5000 random CAN messages
+    for i in 0..5000 {
+        let mut msg = CanMessage::new();
+        msg.set_bus_channel(11);
+        msg.set_message_id(i as u32);
+        msg.set_extended_id(false);
+        msg.set_dlc(8);
+        assert_eq!(msg.get_bus_channel(), 11);
+        let data = vec![i as u8; 8]; // Fill with the same byte for simplicity
+        msg.set_data_bytes(&data);
+
+        writer.save_can_message(&mut can_data_group, start_time + i, &mut msg);
+        writer.save_can_message(&mut can_remote_group, start_time + i, &mut msg);
+        writer.save_can_message(&mut can_error_group, start_time + i, &mut msg);
+        writer.save_can_message(&mut can_overload_group, start_time + i, &mut msg);
+    }
+
+    writer.stop_measurement(start_time + 5000);
+    writer.finalize_measurement();
+
+    let mut reader = reader::MdfReader::new(file_path).expect("Failed to create MDF reader");
+    assert!(reader.is_ok());
+    assert!(reader.read_everything_but_data().is_ok());
 }
 
 /// Test CAN message with all available properties
@@ -99,6 +142,4 @@ fn test_can_bus_writer_types() {
         file_path2,
     )
     .expect("Failed to create MDF bus logger writer");
-
-    // Both writer types should be creatable
 }

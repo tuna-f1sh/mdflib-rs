@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
-use crate::channelgroup::{ChannelGroup, ChannelGroupRef};
+use crate::channelgroup::ChannelGroup;
 
 /// Represents an immutable reference to a data group in an MDF file.
 #[derive(Debug, Clone, Copy)]
@@ -39,13 +39,25 @@ impl<'a> DataGroupRef<'a> {
     }
 
     /// Gets a channel group by its index.
-    pub fn get_channel_group(&self, index: usize) -> Option<ChannelGroupRef> {
+    pub fn get_channel_group_by_index(&self, index: usize) -> Option<ChannelGroup> {
         unsafe {
             let cg = ffi::DataGroupGetChannelGroupByIndex(self.inner, index);
             if cg.is_null() {
                 None
             } else {
-                Some(ChannelGroupRef::new(cg))
+                Some(ChannelGroup::new(cg))
+            }
+        }
+    }
+
+    pub fn get_channel_group(&self, name: &str) -> Option<ChannelGroup> {
+        let c_name = CString::new(name).unwrap();
+        unsafe {
+            let cg = ffi::DataGroupGetChannelGroupByName(self.inner, c_name.as_ptr());
+            if cg.is_null() {
+                None
+            } else {
+                Some(ChannelGroup::new(cg))
             }
         }
     }
