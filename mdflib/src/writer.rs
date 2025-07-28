@@ -1,7 +1,7 @@
 //! MDF file writer implementation
 use crate::{
     canmessage::CanMessage,
-    channelgroup::ChannelGroup,
+    channelgroup::ChannelGroupRef,
     datagroup::DataGroup,
     error::{MdfError, Result},
     file::MdfFile,
@@ -126,18 +126,18 @@ impl MdfWriter {
     }
 
     /// Save a sample
-    pub fn save_sample(&mut self, group: &mut ChannelGroup, time: u64) {
-        unsafe { MdfWriterSaveSample(self.inner, group.inner, time) }
+    pub fn save_sample(&mut self, group: &ChannelGroupRef, time: u64) {
+        unsafe { MdfWriterSaveSample(self.inner, group.inner as *mut _, time) }
     }
 
     /// Save a CAN message
     pub fn save_can_message(
         &mut self,
-        group: &mut ChannelGroup,
+        group: &ChannelGroupRef,
         time: u64,
         message: &mut CanMessage,
     ) {
-        unsafe { MdfWriterSaveCanMessage(self.inner, group.inner, time, message.inner) }
+        unsafe { MdfWriterSaveCanMessage(self.inner, group.inner as *mut _, time, message.inner) }
     }
 
     /// Start measurement

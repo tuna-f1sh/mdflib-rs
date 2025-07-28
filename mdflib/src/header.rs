@@ -1,6 +1,5 @@
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
@@ -12,17 +11,13 @@ use crate::metadata::{MetaData, MetaDataRef};
 
 /// Represents an immutable reference to the header of an MDF file.
 #[derive(Debug, Clone, Copy)]
-pub struct MdfHeaderRef<'a> {
+pub struct MdfHeaderRef {
     pub(crate) inner: *const ffi::IHeader,
-    _marker: PhantomData<&'a ()>,
 }
 
-impl<'a> MdfHeaderRef<'a> {
+impl MdfHeaderRef {
     pub(crate) fn new(inner: *const ffi::IHeader) -> Self {
-        Self {
-            inner,
-            _marker: PhantomData,
-        }
+        Self { inner }
     }
 
     /// Gets the measurement ID.
@@ -218,12 +213,12 @@ impl<'a> MdfHeaderRef<'a> {
 
 /// Represents a mutable reference to the header of an MDF file.
 #[derive(Debug)]
-pub struct MdfHeader<'a> {
+pub struct MdfHeader {
     pub(crate) inner: *mut ffi::IHeader,
-    inner_ref: MdfHeaderRef<'a>,
+    inner_ref: MdfHeaderRef,
 }
 
-impl<'a> MdfHeader<'a> {
+impl MdfHeader {
     pub(crate) fn new(inner: *mut ffi::IHeader) -> Self {
         Self {
             inner,
@@ -392,8 +387,8 @@ impl<'a> MdfHeader<'a> {
     }
 }
 
-impl<'a> Deref for MdfHeader<'a> {
-    type Target = MdfHeaderRef<'a>;
+impl Deref for MdfHeader {
+    type Target = MdfHeaderRef;
 
     fn deref(&self) -> &Self::Target {
         &self.inner_ref

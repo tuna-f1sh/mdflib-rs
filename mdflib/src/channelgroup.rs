@@ -1,6 +1,5 @@
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
@@ -10,17 +9,13 @@ use crate::sourceinformation::{SourceInformation, SourceInformationRef};
 
 /// Represents an immutable reference to a channel group in an MDF file.
 #[derive(Debug, Clone, Copy)]
-pub struct ChannelGroupRef<'a> {
+pub struct ChannelGroupRef {
     pub(crate) inner: *const ffi::IChannelGroup,
-    _marker: PhantomData<&'a ()>,
 }
 
-impl<'a> ChannelGroupRef<'a> {
+impl ChannelGroupRef {
     pub(crate) fn new(inner: *const ffi::IChannelGroup) -> Self {
-        Self {
-            inner,
-            _marker: PhantomData,
-        }
+        Self { inner }
     }
 
     /// Gets the index of the channel group.
@@ -105,12 +100,12 @@ impl<'a> ChannelGroupRef<'a> {
 
 /// Represents a mutable reference to a channel group in an MDF file.
 #[derive(Debug)]
-pub struct ChannelGroup<'a> {
+pub struct ChannelGroup {
     pub(crate) inner: *mut ffi::IChannelGroup,
-    inner_ref: ChannelGroupRef<'a>,
+    inner_ref: ChannelGroupRef,
 }
 
-impl<'a> ChannelGroup<'a> {
+impl ChannelGroup {
     pub(crate) fn new(inner: *mut ffi::IChannelGroup) -> Self {
         Self {
             inner,
@@ -178,8 +173,8 @@ impl<'a> ChannelGroup<'a> {
     }
 }
 
-impl<'a> Deref for ChannelGroup<'a> {
-    type Target = ChannelGroupRef<'a>;
+impl Deref for ChannelGroup {
+    type Target = ChannelGroupRef;
 
     fn deref(&self) -> &Self::Target {
         &self.inner_ref

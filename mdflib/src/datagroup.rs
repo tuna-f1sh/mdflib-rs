@@ -1,6 +1,5 @@
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::c_char;
 
@@ -8,17 +7,13 @@ use crate::channelgroup::ChannelGroup;
 
 /// Represents an immutable reference to a data group in an MDF file.
 #[derive(Debug, Clone, Copy)]
-pub struct DataGroupRef<'a> {
+pub struct DataGroupRef {
     pub(crate) inner: *const ffi::IDataGroup,
-    _marker: PhantomData<&'a ()>,
 }
 
-impl<'a> DataGroupRef<'a> {
+impl DataGroupRef {
     pub(crate) fn new(inner: *const ffi::IDataGroup) -> Self {
-        Self {
-            inner,
-            _marker: PhantomData,
-        }
+        Self { inner }
     }
 
     pub fn get_description(&self) -> String {
@@ -65,12 +60,12 @@ impl<'a> DataGroupRef<'a> {
 
 /// Represents a mutable reference to a data group in an MDF file.
 #[derive(Debug)]
-pub struct DataGroup<'a> {
+pub struct DataGroup {
     pub(crate) inner: *mut ffi::IDataGroup,
-    inner_ref: DataGroupRef<'a>,
+    inner_ref: DataGroupRef,
 }
 
-impl<'a> DataGroup<'a> {
+impl DataGroup {
     pub(crate) fn new(inner: *mut ffi::IDataGroup) -> Self {
         Self {
             inner,
@@ -95,8 +90,8 @@ impl<'a> DataGroup<'a> {
     }
 }
 
-impl<'a> Deref for DataGroup<'a> {
-    type Target = DataGroupRef<'a>;
+impl Deref for DataGroup {
+    type Target = DataGroupRef;
 
     fn deref(&self) -> &Self::Target {
         &self.inner_ref
