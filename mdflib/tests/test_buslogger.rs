@@ -40,13 +40,10 @@ fn test_mdf4_can_bus_logger_basic() {
     let temp_file = NamedTempFile::new().unwrap();
     let file_path = temp_file.path();
 
-    let mut writer = writer::MdfWriter::new(
-        mdflib_sys::MdfWriterType::MdfWriterType_BusLogger,
-        file_path,
-    )
-    .expect("Failed to create MDF bus logger writer");
+    let mut writer = writer::MdfWriter::new(mdflib_sys::MdfWriterType::MdfBusLogger, file_path)
+        .expect("Failed to create MDF bus logger writer");
 
-    writer.set_bus_type(0x01);
+    writer.set_bus_type(mdflib_sys::MdfBusType::CAN as u16);
     assert!(writer.create_bus_log_configuration());
 
     writer.init_measurement();
@@ -127,16 +124,12 @@ fn test_can_bus_writer_types() {
     let file_path = temp_file.path();
 
     // Test creating different writer types that are used with CAN logging
-    let _writer_mdf4 =
-        writer::MdfWriter::new(mdflib_sys::MdfWriterType::MdfWriterType_Mdf4, file_path)
-            .expect("Failed to create MDF4 writer");
+    let _writer_mdf4 = writer::MdfWriter::new(mdflib_sys::MdfWriterType::Mdf4Basic, file_path)
+        .expect("Failed to create MDF4 writer");
 
     let temp_file2 = NamedTempFile::new().unwrap();
     let file_path2 = temp_file2.path();
 
-    let _writer_bus = writer::MdfWriter::new(
-        mdflib_sys::MdfWriterType::MdfWriterType_BusLogger,
-        file_path2,
-    )
-    .expect("Failed to create MDF bus logger writer");
+    let _writer_bus = writer::MdfWriter::new(mdflib_sys::MdfWriterType::MdfBusLogger, file_path2)
+        .expect("Failed to create MDF bus logger writer");
 }

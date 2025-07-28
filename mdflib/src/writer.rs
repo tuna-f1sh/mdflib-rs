@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn test_writer_creation() {
         let temp_file = NamedTempFile::new().unwrap();
-        let writer = MdfWriter::new(MdfWriterType::MdfWriterType_Mdf4, temp_file.path());
+        let writer = MdfWriter::new(MdfWriterType::Mdf4Basic, temp_file.path());
         assert!(writer.is_ok());
     }
 }

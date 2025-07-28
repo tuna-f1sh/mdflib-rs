@@ -12,7 +12,7 @@ fn test_mdf4_write_header_and_history() {
     let temp_file = NamedTempFile::new().unwrap();
     let file_path = temp_file.path();
 
-    let _writer = writer::MdfWriter::new(mdflib_sys::MdfWriterType::MdfWriterType_Mdf4, file_path)
+    let _writer = writer::MdfWriter::new(mdflib_sys::MdfWriterType::Mdf4Basic, file_path)
         .expect("Failed to create MDF writer");
 
     // Test basic writer creation - this uses all the new wrapper functionality
@@ -27,9 +27,8 @@ fn test_mdf4_write_basic_structure() {
     let temp_file = NamedTempFile::new().unwrap();
     let file_path = temp_file.path();
 
-    let mut writer =
-        writer::MdfWriter::new(mdflib_sys::MdfWriterType::MdfWriterType_Mdf4, file_path)
-            .expect("Failed to create MDF writer");
+    let mut writer = writer::MdfWriter::new(mdflib_sys::MdfWriterType::Mdf4Basic, file_path)
+        .expect("Failed to create MDF writer");
 
     // Test that we can get the header
     if let Some(mut header) = writer.get_header() {
