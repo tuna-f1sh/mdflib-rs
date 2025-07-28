@@ -58,17 +58,6 @@ impl MdfWriter {
         }
     }
 
-    /// Gets a channel group by name from the last data group.
-    ///
-    /// # Safety
-    /// The returned ChannelGroupRef is only valid as long as this MdfWriter exists.
-    /// Do not use the returned reference after the writer has been dropped.
-    pub fn get_channel_group(&self, name: &str) -> Option<ChannelGroupRef> {
-        let header = self.get_header()?;
-        let last_dg = header.get_last_data_group()?;
-        last_dg.get_channel_group_ref(name)
-    }
-
     /// Check if the file is new
     pub fn is_file_new(&self) -> bool {
         unsafe { MdfWriterIsFileNew(self.inner) }

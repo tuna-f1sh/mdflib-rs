@@ -54,23 +54,20 @@ fn test_mdf4_can_bus_logger_basic() {
     writer.set_pre_trig_time(0.0);
     writer.set_compress_data(false);
 
-    // Set up file history - do this in a separate scope to avoid borrow issues
-    {
-        let mut header = writer.get_header().unwrap();
-        let mut history = header.create_file_history().unwrap();
-        let _ = history.set_description("Test MDF4 CAN bus logger");
-        let _ = history.set_tool_name("mdflib-rs");
-        let _ = history.set_tool_version("0.1.0");
-        let _ = history.set_user_name("Test User");
-    }
+    let mut header = writer.get_header().unwrap();
+    let mut history = header.create_file_history().unwrap();
+    history.set_description("Test MDF4 CAN bus logger").unwrap();
+    history.set_tool_name("mdflib-rs").unwrap();
+    history.set_tool_version("0.1.0").unwrap();
+    history.set_user_name("Test User").unwrap();
 
     let start_time = 1753689305;
+    let last_dg = header.get_last_data_group().unwrap();
 
-    // Get channel groups using convenience methods
-    let can_data_group = writer.get_channel_group("CAN_DataFrame").unwrap();
-    let can_remote_group = writer.get_channel_group("CAN_RemoteFrame").unwrap();
-    let can_error_group = writer.get_channel_group("CAN_ErrorFrame").unwrap();
-    let can_overload_group = writer.get_channel_group("CAN_OverloadFrame").unwrap();
+    let can_data_group = last_dg.get_channel_group("CAN_DataFrame").unwrap();
+    let can_remote_group = last_dg.get_channel_group("CAN_RemoteFrame").unwrap();
+    let can_error_group = last_dg.get_channel_group("CAN_ErrorFrame").unwrap();
+    let can_overload_group = last_dg.get_channel_group("CAN_OverloadFrame").unwrap();
 
     // Write 5000 random CAN messages
     for i in 0..5000 {
@@ -121,10 +118,6 @@ fn test_can_message_comprehensive() {
     // Test extended frame
     msg.set_extended_id(true);
     assert!(msg.get_extended_id());
-
-    // Note: CAN ID calculation might be different from message ID for extended frames
-    // Just verify that the method works
-    let _can_id = msg.get_can_id();
 }
 
 /// Test that CAN bus writer types work
