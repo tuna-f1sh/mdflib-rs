@@ -157,10 +157,18 @@ unsafe impl<'a> Sync for ChannelObserver<'a> {}
 /// This function creates a channel observer that can be used to read sample data
 /// from a channel. The observer holds all sample data for the channel in memory.
 ///
+/// # Safety
+/// 
+/// This function is unsafe because it takes raw pointers to C++ objects. The caller
+/// must ensure that:
+/// - The pointers are valid and point to live objects
+/// - The objects remain valid for the lifetime of the observer
+/// - The pointers are properly aligned and non-null
+///
 /// # Arguments
-/// * `data_group` - The data group containing the channel
-/// * `channel_group` - The channel group containing the channel
-/// * `channel` - The specific channel to observe
+/// * `data_group` - Raw pointer to the data group containing the channel
+/// * `channel_group` - Raw pointer to the channel group containing the channel
+/// * `channel` - Raw pointer to the specific channel to observe
 ///
 /// # Returns
 /// Returns a `Result<ChannelObserver>` if successful, or an error if creation fails.
@@ -171,12 +179,15 @@ unsafe impl<'a> Sync for ChannelObserver<'a> {}
 /// 
 /// # fn example() -> mdflib::Result<()> {
 /// let reader = reader::MdfReader::new("example.mf4")?;
-/// // ... get data_group, channel_group, and channel ...
-/// # let data_group = todo!();
-/// # let channel_group = todo!();
-/// # let channel = todo!();
+/// // ... get data_group, channel_group, and channel from file ...
+/// # let file = reader.get_file().unwrap();
+/// # let data_group = file.get_data_group(0);
+/// # let channel_group = data_group.get_channel_group_by_index(0).unwrap();
+/// # let channel = channel_group.get_channel(0).unwrap();
 /// 
-/// let observer = create_channel_observer(&data_group, &channel_group, &channel)?;
+/// let observer = unsafe {
+///     create_channel_observer(data_group.as_ptr(), channel_group.as_ptr(), channel.as_ptr())?
+/// };
 /// let nof_samples = observer.get_nof_samples();
 /// 
 /// for sample in 0..nof_samples {
@@ -187,7 +198,7 @@ unsafe impl<'a> Sync for ChannelObserver<'a> {}
 /// # Ok(())
 /// # }
 /// ```
-pub fn create_channel_observer<'a>(
+pub unsafe fn create_channel_observer<'a>(
     data_group: *const ffi::IDataGroup,
     channel_group: *const ffi::IChannelGroup,
     channel: *const ffi::IChannel,

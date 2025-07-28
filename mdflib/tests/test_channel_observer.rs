@@ -69,7 +69,7 @@ fn test_channel_observer_basic() {
         // and actual sample data. For now, we just test channel observer creation
         
         // Create a channel observer to read the sample data
-        let observer = create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr())
+        let observer = unsafe { create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr()) }
             .expect("Should be able to create channel observer");
         
         let nof_samples = observer.get_nof_samples();
@@ -153,13 +153,13 @@ fn test_channel_observer_multiple_channels() {
             // This test demonstrates creating channel observers for the structure
             
             for cg_index in 0..dg.get_channel_group_count() {
-                let cg = dg.get_channel_group(cg_index).unwrap();
+                let cg = dg.get_channel_group_by_index(cg_index).unwrap();
                 
                 for ch_index in 0..cg.get_channel_count() {
                     let channel = cg.get_channel(ch_index).unwrap();
                     
                     // Create a channel observer for each channel
-                    let observer = create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr())
+                    let observer = unsafe { create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr()) }
                         .expect("Should be able to create channel observer");
                     
                     observers.push((channel.get_name(), observer));
