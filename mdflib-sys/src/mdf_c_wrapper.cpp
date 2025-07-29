@@ -3,6 +3,8 @@
  * Based on MdfExport.cpp from mdflib
  */
 
+// #include "mdf_c_wrapper.h"
+
 #include <mdf/canmessage.h>
 #include <mdf/etag.h>
 #include <mdf/iattachment.h>
@@ -22,8 +24,6 @@
 #include <mdf/mdfwriter.h>
 #include <mdf/mdflogstream.h>
 
-// #include "mdf_c_wrapper.h"
-
 using namespace mdf;
 
 
@@ -39,27 +39,29 @@ using namespace mdf;
 extern "C" {
 
 // Global function pointers for C-style callbacks
-static MdfLogFunction1 g_log_function1 = nullptr;
-static MdfLogFunction2 g_log_function2 = nullptr;
+typedef void (*MdfCLogFunction1)(MdfLogSeverity severity, const uint8_t* text);
+typedef void (*MdfCLogFunction2)(MdfLogSeverity severity, const char* function, const uint8_t* text);
+static MdfCLogFunction1 g_c_log_function1 = nullptr;
+static MdfCLogFunction2 g_c_log_function2 = nullptr;
 
 // C++ wrapper for the MdfLogFunction1 callback
 void MdfLogWrapper1(const MdfLocation &location, MdfLogSeverity severity, const std::string& text) {
-    if (g_log_function1) {
+    if (g_c_log_function1) {
         MdfLocation c_location = {location.line, location.column, location.file.c_str(), location.function.c_str()};
-        g_log_function1(c_location, severity, text.c_str());
+        g_c_log_function1(static_cast<MdfLogSeverity>(severity), (const uint8_t*) text.c_str());
     }
 }
 
 // C++ wrapper for the MdfLogFunction2 callback
 void MdfLogWrapper2(MdfLogSeverity severity, const std::string& function, const std::string& text) {
-    if (g_log_function2) {
-        g_log_function2(severity, function.c_str(), text.c_str());
+    if (g_c_log_function2) {
+        g_c_log_function2(static_cast<MdfLogSeverity>(severity), function.c_str(), (const uint8_t*) text.c_str());
     }
 }
 
 // Function to set the C-style log function 1
-EXPORT void MdfSetLogFunction1(MdfLogFunction1 func) {
-    g_log_function1 = func;
+EXPORT void MdfSetLogFunction1(MdfCLogFunction1 func) {
+    g_c_log_function1 = func;
     if (func) {
         MdfLogStream::SetLogFunction1(MdfLogWrapper1);
     } else {
@@ -68,8 +70,8 @@ EXPORT void MdfSetLogFunction1(MdfLogFunction1 func) {
 }
 
 // Function to set the C-style log function 2
-EXPORT void MdfSetLogFunction2(MdfLogFunction2 func) {
-    g_log_function2 = func;
+EXPORT void MdfSetLogFunction2(MdfCLogFunction2 func) {
+    g_c_log_function2 = func;
     if (func) {
         MdfLogStream::SetLogFunction2(MdfLogWrapper2);
     } else {

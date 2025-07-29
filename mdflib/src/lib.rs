@@ -59,5 +59,6 @@ pub use channelobserver::{create_channel_observer, ChannelObserver, ChannelObser
 pub use etag::{ETag, ETagRef};
 pub use event::{Event, EventRef};
 pub use filehistory::{FileHistory, FileHistoryRef};
+pub use log::{log_callback, set_log_callback_1};
 pub use metadata::{MetaData, MetaDataRef};
 pub use sourceinformation::{SourceInformation, SourceInformationRef};

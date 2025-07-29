@@ -424,12 +424,12 @@ typedef struct {
 } MdfLocation;
 
 // C-compatible log function pointer types
-typedef void (*MdfLogFunction1)(const MdfLocation* location, MdfLogSeverity severity, const char* text);
-typedef void (*MdfLogFunction2)(MdfLogSeverity severity, const char* function, const char* text);
+typedef void (*MdfCLogFunction1)(MdfLogSeverity severity, const char* text);
+typedef void (*MdfCLogFunction2)(MdfLogSeverity severity, const char* function, const char* text);
 
 // Functions to set the log callbacks
-EXPORT void MdfSetLogFunction1(MdfLogFunction1 func);
-EXPORT void MdfSetLogFunction2(MdfLogFunction2 func);
+EXPORT void MdfSetLogFunction1(MdfCLogFunction1 func);
+EXPORT void MdfSetLogFunction2(MdfCLogFunction2 func);
 
 // MdfReader functions
 EXPORT MdfReader* MdfReaderInit(const char* filename);
