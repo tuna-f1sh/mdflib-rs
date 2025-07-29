@@ -2,7 +2,17 @@
 use mdflib::{create_channel_observer, ChannelObserver, MdfReader, Result};
 use std::env;
 
+pub fn set_env_logger() {
+    // Initialize the logger with the default settings
+    env_logger::init();
+
+    // Set the log callback to use the env_logger
+    mdflib::log::set_log_callback_1(Some(mdflib::log::log_callback));
+}
+
 fn main() -> Result<()> {
+    set_env_logger();
+
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 2 {

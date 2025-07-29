@@ -424,7 +424,7 @@ typedef struct {
 } MdfLocation;
 
 // C-compatible log function pointer types
-typedef void (*MdfCLogFunction1)(const MdfLocation* location, MdfLogSeverity severity, const char* text);
+typedef void (*MdfCLogFunction1)(MdfLogSeverity severity, const char* text);
 typedef void (*MdfCLogFunction2)(MdfLogSeverity severity, const char* function, const char* text);
 
 // Functions to set the log callbacks
