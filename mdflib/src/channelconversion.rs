@@ -17,6 +17,27 @@ pub struct ChannelConversionRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for ChannelConversionRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ChannelConversion {{ index: {}, name: {}, description: {}, unit: {}, type: {}, precision_used: {}, precision: {}, range_used: {}, range_min: {}, range_max: {}, flags: {}, formula: {} }}",
+            self.get_index(),
+            self.get_name(),
+            self.get_description(),
+            self.get_unit(),
+            self.get_type(),
+            self.is_precision_used(),
+            self.get_precision(),
+            self.is_range_used(),
+            self.get_range_min(),
+            self.get_range_max(),
+            self.get_flags(),
+            self.get_formula()
+        )
+    }
+}
+
 impl<'a> ChannelConversionRef<'a> {
     #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IChannelConversion) -> Self {

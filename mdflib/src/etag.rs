@@ -16,6 +16,24 @@ pub struct ETagRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for ETagRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ETag {{ name: {}, description: {}, unit: {}, unit_ref: {}, type: {}, data_type: {}, language: {}, read_only: {}, value: {} }}",
+            self.get_name(),
+            self.get_description(),
+            self.get_unit(),
+            self.get_unit_ref(),
+            self.get_type(),
+            self.get_data_type(),
+            self.get_language(),
+            self.get_read_only(),
+            self.get_value_as_string()
+        )
+    }
+}
+
 impl<'a> ETagRef<'a> {
     pub(crate) fn new(inner: *const ffi::ETag) -> Self {
         Self {

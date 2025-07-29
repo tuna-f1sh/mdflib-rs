@@ -17,6 +17,22 @@ pub struct FileHistoryRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for FileHistoryRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "FileHistory {{ index: {}, time: {}, description: {}, tool_name: {}, tool_vendor: {}, tool_version: {}, user_name: {} }}",
+            self.get_index(),
+            self.get_time(),
+            self.get_description(),
+            self.get_tool_name(),
+            self.get_tool_vendor(),
+            self.get_tool_version(),
+            self.get_user_name()
+        )
+    }
+}
+
 impl<'a> FileHistoryRef<'a> {
     #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IFileHistory) -> Self {

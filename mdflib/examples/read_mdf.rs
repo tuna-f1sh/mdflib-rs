@@ -1,5 +1,5 @@
 //! Example: Reading an MDF file
-use mdflib::{MdfReader, Result};
+use mdflib::{create_channel_observer, ChannelObserver, MdfReader, Result};
 use std::env;
 
 fn main() -> Result<()> {
@@ -24,48 +24,110 @@ fn main() -> Result<()> {
         eprintln!("Reader is not finalized");
     }
 
-    println!("Opening file...");
-    reader.open()?;
-
-    println!("Reading header...");
-    reader.read_header()?;
-    if let Some(header) = reader.get_header() {
-        println!("Header: {header:?}");
-        let measurement_id = header.get_measurement_id();
-        println!("Measurement ID: {measurement_id}");
-        let recorder_id = header.get_recorder_id();
-        println!("Recorder ID: {recorder_id}");
-        let author = header.get_author();
-        let project = header.get_project();
-        let department = header.get_department();
-        println!("Author: {author}, Project: {project}, Department: {department}");
-        let description = header.get_description();
-        println!("Description: {description}");
-        let start_time = header.get_start_time();
-        println!("Start Time: {start_time}");
-    }
-
-    println!("Reading measurement info...");
-    reader.read_measurement_info()?;
-
-    println!("Reading metadata...");
+    println!("Reading file metadata...");
     reader.read_everything_but_data()?;
-    println!("Number of data groups: {}", reader.get_data_group_count());
-    if let Some(data) = reader.get_data_group(0) {
-        println!("Data Group 0: {data:?}");
-        let description = data.get_description();
-        println!("Data Group 0 Description: {description}");
-        let channels = data.get_channel_group_count();
-        for i in 0..channels {
-            if let Some(channel_group) = data.get_channel_group_by_index(i) {
-                let cg_name = channel_group.get_name();
-                let cg_description = channel_group.get_description();
-                println!("Channel Group {i}: {cg_name}/{cg_description}");
+
+    if let Some(file) = reader.get_file() {
+        println!("File: {file}");
+
+        println!("\nAttachments:");
+        for attachment in file.get_attachments() {
+            println!("  {attachment}");
+        }
+
+        if let Some(header) = reader.get_header() {
+            println!("\nHeader: {header}");
+
+            println!("\nFile Histories:");
+            for history in header.get_file_histories() {
+                println!("  {history}");
             }
+
+            println!("\nEvents:");
+            for event in header.get_events() {
+                println!("  {event}");
+            }
+        }
+
+        println!("\nData Groups ({})", file.get_data_group_count());
+        let mut data_groups = file.get_data_groups();
+        for (i, data_group) in data_groups.iter_mut().enumerate() {
+            println!("\n  Data Group {}: {:?}", i, &*data_group);
+
+            let mut observers: Vec<(String, ChannelObserver)> = Vec::new();
+
+            println!(
+                "    Channel Groups ({})",
+                data_group.get_channel_group_count()
+            );
+            let channel_groups = data_group.get_channel_groups();
+            for (j, channel_group) in channel_groups.iter().enumerate() {
+                println!("      Channel Group {j}: {channel_group:?}");
+
+                if let Some(si) = channel_group.get_source_information() {
+                    println!("        Source Info: {si}");
+                }
+
+                println!("        Channels ({})", channel_group.get_channel_count());
+                let channels = channel_group.get_channels();
+                for (k, channel) in channels.iter().enumerate() {
+                    println!("          Channel {k}: {channel}");
+                    if let Some(si) = channel.get_source_information() {
+                        println!("            Source Info: {si}");
+                    }
+                    if let Some(cc) = channel.get_channel_conversion() {
+                        println!("            Conversion: {cc}");
+                    }
+                    if let Some(ca) = channel.get_channel_array() {
+                        println!("            Array: {ca}");
+                    }
+
+                    // Create and store channel observer
+                    let observer = unsafe {
+                        create_channel_observer(
+                            data_group.as_ptr(),
+                            channel_group.as_ptr(),
+                            channel.as_ptr(),
+                        )?
+                    };
+                    observers.push((
+                        format!("{}/{}", channel_group.get_name(), channel.get_name()),
+                        observer,
+                    ));
+                }
+            }
+
+            // Now read the data for this data group
+            println!("\n    Reading data for Data Group {i}...");
+            reader.read_data(data_group)?;
+            println!("    Data read successfully.");
+
+            // Process the observers
+            println!("\n    Processing Channel Observers for Data Group {i}...");
+            for (channel_name, observer) in &observers {
+                let nof_samples = observer.get_nof_samples();
+                println!("      Observer for \"{channel_name}\": {nof_samples} samples");
+
+                if nof_samples > 0 {
+                    // Print first 5 samples
+                    println!("        First 5 samples:");
+                    for sample_idx in 0..nof_samples.min(5) {
+                        let eng_value = observer.get_eng_value(sample_idx);
+                        let channel_value = observer.get_channel_value(sample_idx);
+                        println!(
+                            "          Sample {sample_idx}: Eng: {eng_value:?}, Channel: {channel_value:?}"
+                        );
+                    }
+                }
+            }
+
+            // Clear data to free memory
+            data_group.clear_data();
+            println!("    Cleared data for Data Group {i}.");
         }
     }
 
-    println!("Successfully read MDF file structure!");
+    println!("\nSuccessfully read MDF file structure and sample data!");
 
     Ok(())
 }

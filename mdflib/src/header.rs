@@ -15,6 +15,27 @@ pub struct MdfHeaderRef {
     pub(crate) inner: *const ffi::IHeader,
 }
 
+impl std::fmt::Display for MdfHeaderRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "MdfHeaderRef {{ data_groups: {}, measurement_id: {}, recorder_id: {}, recorder_index: {}, start_angle: {:?}, start_distance: {:?}, author: {}, department: {}, project: {}, subject: {}, description: {}, start_time: {} }}",
+            self.get_data_group_count(),
+            self.get_measurement_id(),
+            self.get_recorder_id(),
+            self.get_recorder_index(),
+            self.get_start_angle(),
+            self.get_start_distance(),
+            self.get_author(),
+            self.get_department(),
+            self.get_project(),
+            self.get_subject(),
+            self.get_description(),
+            self.get_start_time()
+        )
+    }
+}
+
 impl MdfHeaderRef {
     pub(crate) fn new(inner: *const ffi::IHeader) -> Self {
         Self { inner }
@@ -208,6 +229,11 @@ impl MdfHeaderRef {
             .filter(|&ptr| !ptr.is_null())
             .map(EventRef::new)
             .collect()
+    }
+
+    /// Gets the data group count.
+    pub fn get_data_group_count(&self) -> usize {
+        unsafe { ffi::IHeaderGetDataGroupCount(self.inner) as usize }
     }
 }
 

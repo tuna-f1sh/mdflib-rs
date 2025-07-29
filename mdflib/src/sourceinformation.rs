@@ -17,6 +17,22 @@ pub struct SourceInformationRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for SourceInformationRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "SourceInformation {{ index: {}, name: {}, description: {}, path: {}, type: {}, bus: {}, flags: {} }}",
+            self.get_index(),
+            self.get_name(),
+            self.get_description(),
+            self.get_path(),
+            self.get_type(),
+            self.get_bus(),
+            self.get_flags()
+        )
+    }
+}
+
 impl<'a> SourceInformationRef<'a> {
     #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::ISourceInformation) -> Self {

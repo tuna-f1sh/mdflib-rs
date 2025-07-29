@@ -17,6 +17,28 @@ pub struct EventRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for EventRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Event {{ index: {}, name: {}, description: {}, group_name: {}, type: {}, sync: {}, range: {}, cause: {}, creator_index: {}, sync_value: {}, sync_factor: {}, pre_trig: {}, post_trig: {} }}",
+            self.get_index(),
+            self.get_name(),
+            self.get_description(),
+            self.get_group_name(),
+            self.get_type(),
+            self.get_sync(),
+            self.get_range(),
+            self.get_cause(),
+            self.get_creator_index(),
+            self.get_sync_value(),
+            self.get_sync_factor(),
+            self.get_pre_trig(),
+            self.get_post_trig()
+        )
+    }
+}
+
 impl<'a> EventRef<'a> {
     #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IEvent) -> Self {

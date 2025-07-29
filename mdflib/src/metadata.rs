@@ -17,6 +17,12 @@ pub struct MetaDataRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for MetaDataRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "MetaData {{ xml_snippet: {} }}", self.get_xml_snippet())
+    }
+}
+
 impl<'a> MetaDataRef<'a> {
     #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IMetaData) -> Self {

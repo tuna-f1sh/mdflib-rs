@@ -679,6 +679,14 @@ EXPORT IDataGroup *IHeaderLastDataGroup(IHeader *header) {
   return header ? header->LastDataGroup() : nullptr;
 }
 
+EXPORT size_t IHeaderGetDataGroupCount(const IHeader *header) {
+  if (!header)
+    return 0;
+
+  auto temp_list = header->DataGroups();
+  return temp_list.size();
+}
+
 EXPORT size_t IHeaderGetDataGroups(const IHeader *header,
                                     const IDataGroup *groups[],
                                     size_t max_count) {

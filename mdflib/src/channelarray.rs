@@ -13,6 +13,20 @@ pub struct ChannelArrayRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for ChannelArrayRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ChannelArray {{ index: {}, type: {}, storage: {}, flags: {}, nof_elements: {} }}",
+            self.get_index(),
+            self.get_type(),
+            self.get_storage(),
+            self.get_flags(),
+            self.get_nof_elements()
+        )
+    }
+}
+
 impl<'a> ChannelArrayRef<'a> {
     #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IChannelArray) -> Self {

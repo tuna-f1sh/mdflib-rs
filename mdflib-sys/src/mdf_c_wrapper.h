@@ -553,6 +553,7 @@ EXPORT size_t IHeaderGetEvents(const IHeader* header, const IEvent* events[], si
 EXPORT IEvent* IHeaderCreateEvent(IHeader* header);
 EXPORT IDataGroup *IHeaderLastDataGroup(IHeader *header);
 EXPORT size_t IHeaderGetDataGroups(const IHeader *header, const IDataGroup *groups[], size_t max_count);
+EXPORT size_t IHeaderGetDataGroupCount(const IHeader *header);
 
 // ISourceInformation functions
 EXPORT uint64_t SourceInformationGetIndex(const ISourceInformation* source);

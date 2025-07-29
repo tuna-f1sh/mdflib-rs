@@ -17,6 +17,22 @@ pub struct AttachmentRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for AttachmentRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Attachment {{ index: {}, creator_index: {}, embedded: {}, compressed: {}, md5: {:?}, filename: {}, file_type: {} }}",
+            self.get_index(),
+            self.get_creator_index(),
+            self.get_embedded(),
+            self.get_compressed(),
+            self.get_md5(),
+            self.get_filename(),
+            self.get_file_type()
+        )
+    }
+}
+
 impl<'a> AttachmentRef<'a> {
     #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IAttachment) -> Self {

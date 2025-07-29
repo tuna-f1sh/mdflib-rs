@@ -16,6 +16,16 @@ pub struct ChannelObserverRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for ChannelObserverRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ChannelObserver {{ nof_samples: {} }}",
+            self.get_nof_samples()
+        )
+    }
+}
+
 impl<'a> ChannelObserverRef<'a> {
     #[allow(dead_code)]
     pub(crate) fn new(inner: *const ffi::IChannelObserver) -> Self {
@@ -204,13 +214,4 @@ pub unsafe fn create_channel_observer<'a>(
     }
 
     Ok(ChannelObserver::new(observer))
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_channel_observer_basic() {
-        // Basic test to ensure the module compiles
-        // More comprehensive tests would require actual MDF data
-    }
 }

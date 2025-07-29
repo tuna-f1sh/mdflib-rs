@@ -18,6 +18,20 @@ pub struct ChannelGroupRef {
     pub(crate) inner: *const ffi::IChannelGroup,
 }
 
+impl std::fmt::Display for ChannelGroupRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ChannelGroup {{ index: {}, name: {}, description: {}, nof_samples: {}, channel_count: {} }}",
+            self.get_index(),
+            self.get_name(),
+            self.get_description(),
+            self.get_nof_samples(),
+            self.get_channel_count()
+        )
+    }
+}
+
 impl ChannelGroupRef {
     pub(crate) fn new(inner: *const ffi::IChannelGroup) -> Self {
         Self { inner }

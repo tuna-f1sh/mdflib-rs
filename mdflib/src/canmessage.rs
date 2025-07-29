@@ -9,6 +9,22 @@ pub struct CanMessageRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for CanMessageRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "CanMessage {{ message_id: {}, can_id: {}, extended_id: {}, dlc: {}, data_length: {}, data_bytes: {:?}, bus_channel: {} }}",
+            self.get_message_id(),
+            self.get_can_id(),
+            self.get_extended_id(),
+            self.get_dlc(),
+            self.get_data_length(),
+            self.get_data_bytes(),
+            self.get_bus_channel()
+        )
+    }
+}
+
 impl<'a> CanMessageRef<'a> {
     pub(crate) fn new(inner: *const ffi::CanMessage) -> Self {
         Self {

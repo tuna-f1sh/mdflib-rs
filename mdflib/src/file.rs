@@ -11,6 +11,23 @@ pub struct MdfFileRef {
     pub(crate) inner: *const ffi::MdfFile,
 }
 
+impl std::fmt::Display for MdfFileRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "MdfFile {{ name: {}, file_name: {}, version: {}, main_version: {}, minor_version: {}, is_mdf4: {}, data_group_count: {}, is_finalized_done: {} }}",
+            self.get_name(),
+            self.get_file_name(),
+            self.get_version(),
+            self.get_main_version(),
+            self.get_minor_version(),
+            self.is_mdf4(),
+            self.get_data_group_count(),
+            self.is_finalized_done()
+        )
+    }
+}
+
 impl MdfFileRef {
     pub fn new(ptr: *const ffi::MdfFile) -> Self {
         Self { inner: ptr }

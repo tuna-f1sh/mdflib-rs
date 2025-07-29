@@ -11,6 +11,17 @@ pub struct DataGroupRef {
     pub(crate) inner: *const ffi::IDataGroup,
 }
 
+impl std::fmt::Display for DataGroupRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "DataGroup {{ description: {}, channel_group_count: {} }}",
+            self.get_description(),
+            self.get_channel_group_count()
+        )
+    }
+}
+
 impl DataGroupRef {
     pub(crate) fn new(inner: *const ffi::IDataGroup) -> Self {
         Self { inner }

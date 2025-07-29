@@ -59,6 +59,3 @@ pub use event::{Event, EventRef};
 pub use filehistory::{FileHistory, FileHistoryRef};
 pub use metadata::{MetaData, MetaDataRef};
 pub use sourceinformation::{SourceInformation, SourceInformationRef};
-
-#[cfg(test)]
-mod tests {}

@@ -16,6 +16,24 @@ pub struct ChannelRef<'a> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl std::fmt::Display for ChannelRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // display all meta fields
+        write!(
+            f,
+            "Channel {{ index: {}, name: {}, display_name: {}, description: {}, unit: {}, type: {}, data_type: {}, data_bytes: {:#x} }}",
+            self.get_index(),
+            self.get_name(),
+            self.get_display_name(),
+            self.get_description(),
+            self.get_unit(),
+            self.get_type(),
+            self.get_data_type(),
+            self.get_data_bytes()
+        )
+    }
+}
+
 impl<'a> ChannelRef<'a> {
     pub(crate) fn new(inner: *const ffi::IChannel) -> Self {
         Self {
