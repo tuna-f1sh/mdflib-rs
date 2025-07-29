@@ -20,8 +20,12 @@
 #include <mdf/mdffile.h>
 #include <mdf/mdfreader.h>
 #include <mdf/mdfwriter.h>
+#include <mdf/mdflogstream.h>
+
+// #include "mdf_c_wrapper.h"
 
 using namespace mdf;
+
 
 // Export macros for different platforms
 #if defined(_WIN32)
@@ -33,6 +37,45 @@ using namespace mdf;
 #endif
 
 extern "C" {
+
+// Global function pointers for C-style callbacks
+static MdfLogFunction1 g_log_function1 = nullptr;
+static MdfLogFunction2 g_log_function2 = nullptr;
+
+// C++ wrapper for the MdfLogFunction1 callback
+void MdfLogWrapper1(const MdfLocation &location, MdfLogSeverity severity, const std::string& text) {
+    if (g_log_function1) {
+        MdfLocation c_location = {location.line, location.column, location.file.c_str(), location.function.c_str()};
+        g_log_function1(c_location, severity, text.c_str());
+    }
+}
+
+// C++ wrapper for the MdfLogFunction2 callback
+void MdfLogWrapper2(MdfLogSeverity severity, const std::string& function, const std::string& text) {
+    if (g_log_function2) {
+        g_log_function2(severity, function.c_str(), text.c_str());
+    }
+}
+
+// Function to set the C-style log function 1
+EXPORT void MdfSetLogFunction1(MdfLogFunction1 func) {
+    g_log_function1 = func;
+    if (func) {
+        MdfLogStream::SetLogFunction1(MdfLogWrapper1);
+    } else {
+        MdfLogStream::SetLogFunction1(nullptr);
+    }
+}
+
+// Function to set the C-style log function 2
+EXPORT void MdfSetLogFunction2(MdfLogFunction2 func) {
+    g_log_function2 = func;
+    if (func) {
+        MdfLogStream::SetLogFunction2(MdfLogWrapper2);
+    } else {
+        MdfLogStream::SetLogFunction2(nullptr);
+    }
+}
 
 // MdfReader functions
 EXPORT MdfReader *MdfReaderInit(const char *filename) {

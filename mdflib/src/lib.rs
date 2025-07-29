@@ -29,6 +29,8 @@ pub mod header;
 pub mod reader;
 pub mod writer;
 
+pub mod log;
+
 // New MDF object modules
 pub mod attachment;
 pub mod channelarray;
