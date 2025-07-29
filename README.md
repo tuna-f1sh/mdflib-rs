@@ -2,11 +2,13 @@
 
 A crate that provides Rust bindings to the [`mdflib`](https://github.com/ihedvall/mdflib) C++ library, enabling you to read and write MDF (Measurement Data Format) files.
 
-## Why another MDF library?
+## Why not native Rust?
 
-While there are other MDF libraries available for Rust, such as `asammdf` and `rsmdf`, they are either incomplete or lack certain features like write support or bus logging helpers. This library aims to provide a more comprehensive solution by wrapping the feature-rich `mdflib` C++ library.
+While there are MDF libraries available for Rust: [`danielrisca/asammdf`](https://github.com/danielhrisca/asammdf), [`rsmdf`](https://github.com/Liberty009/rsmdf) [`H202-IO/asammdf`](https://github.com/H2O2-IO/asammdf) (looked most viable for development to me), they are either incomplete or lack certain features like write support or bus logging helpers. This library aims to provide a more comprehensive solution by wrapping the feature-rich `mdflib` C++ library.
 
 This project is intended as a proof of concept and a quick way to get a project that depends on MDF logging up and running. In the long term, the goal is to contribute to the existing Rust MDF libraries and reduce the reliance on the C++ `mdflib`.
+
+It was also an experiement for me using bindgen and Copilot agent to write some of the wrapper code.
 
 ## Prerequisites
 
@@ -22,7 +24,8 @@ You can install these dependencies using your system's package manager.
 
 Review the [mdflib documentation](https://ihedvall.github.io/mdflib/), the 'examples/' and 'tests/' directories in this repository.
 
-**Note:** The current implementation is mostly `unsafe` due to the nature of FFI (Foreign Function Interface) with C++.
+> [!WARNING]
+> The current implementation is mostly `unsafe` due to the nature of FFI (Foreign Function Interface) with C++. There are also some lifetime privledges taken to allow for full access to the C++ API. Use with caution and ensure you understand the implications of using `unsafe` code in Rust.
 
 ## Building from Source
 
