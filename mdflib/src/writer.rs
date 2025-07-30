@@ -168,8 +168,6 @@ impl Drop for MdfWriter {
 
 // Ensure MdfWriter is Send and Sync if the underlying C++ library supports it
 unsafe impl Send for MdfWriter {}
-// Note: Sync might not be appropriate depending on mdflib's thread safety
-// unsafe impl Sync for MdfWriter {}
 
 #[cfg(test)]
 mod tests {

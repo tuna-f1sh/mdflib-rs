@@ -1,5 +1,6 @@
 [workspace]
-members = ["mdflib-sys", "mdflib"]
+members = ["mdflib", "mdflib-sys"]
+default-members = ["mdflib", "mdflib-sys"]
 resolver = "2"
 
 [workspace.dependencies]

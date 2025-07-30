@@ -156,8 +156,6 @@ impl Drop for MdfReader {
 
 // Ensure MdfReader is Send and Sync if the underlying C++ library supports it
 unsafe impl Send for MdfReader {}
-// Note: Sync might not be appropriate depending on mdflib's thread safety
-// unsafe impl Sync for MdfReader {}
 
 #[cfg(test)]
 mod tests {

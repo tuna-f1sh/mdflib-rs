@@ -7,7 +7,7 @@ pub fn set_env_logger() {
     env_logger::init();
 
     // Set the log callback to use the env_logger
-    mdflib::log::set_log_callback_1(Some(mdflib::log::log_callback));
+    mdflib::log::set_log_callback_1(Some(mdflib::log::log_callback)).unwrap();
 }
 
 fn main() -> Result<()> {

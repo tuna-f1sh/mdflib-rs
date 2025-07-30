@@ -51,6 +51,9 @@ pub enum MdfError {
 
     #[error("CString conversion error: {0}")]
     CStringConversion(#[from] std::ffi::IntoStringError),
+
+    #[error("Callback error: {0}")]
+    CallbackError(String),
 }
 
 /// Result type for mdflib operations
