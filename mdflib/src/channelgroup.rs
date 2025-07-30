@@ -27,7 +27,7 @@ impl std::fmt::Display for ChannelGroupRef {
             self.get_name(),
             self.get_description(),
             self.get_nof_samples(),
-            self.get_channel_count()
+            self.get_channel_count(),
         )
     }
 }
@@ -87,7 +87,7 @@ impl ChannelGroupRef {
     }
 
     /// Gets a channel by its index.
-    pub fn get_channel(&self, index: usize) -> Option<ChannelRef> {
+    pub fn get_channel_by_index(&self, index: usize) -> Option<ChannelRef> {
         unsafe {
             let ch = ffi::ChannelGroupGetChannelByIndex(self.inner, index);
             if ch.is_null() {
@@ -98,9 +98,29 @@ impl ChannelGroupRef {
         }
     }
 
+    /// Gets a channel by its name.
+    ///
+    /// Note that the function search for a name that includes the search name.
+    /// Example if the search name is '.DataLength', the signal with the name
+    /// 'CAN_DataFrame.DataLength' will be returned the name instead of the
+    /// full name
+    pub fn get_channel(&self, name: &str) -> Option<ChannelRef> {
+        let c_name = CString::new(name).unwrap();
+        unsafe {
+            let ch = ffi::ChannelGroupGetChannelByName(self.inner, c_name.as_ptr());
+            if ch.is_null() {
+                None
+            } else {
+                Some(ChannelRef::new(ch))
+            }
+        }
+    }
+
     pub fn get_channels(&self) -> Vec<ChannelRef> {
         let count = self.get_channel_count();
-        (0..count).filter_map(|i| self.get_channel(i)).collect()
+        (0..count)
+            .filter_map(|i| self.get_channel_by_index(i))
+            .collect()
     }
 
     /// Gets the metadata of the channel group.
@@ -200,6 +220,12 @@ impl ChannelGroup {
                 Some(SourceInformation::new(source_info))
             }
         }
+    }
+}
+
+impl std::fmt::Display for ChannelGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.inner_ref)
     }
 }
 

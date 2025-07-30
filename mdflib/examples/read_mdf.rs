@@ -62,7 +62,7 @@ fn main() -> Result<()> {
         println!("\nData Groups ({})", file.get_data_group_count());
         let mut data_groups = file.get_data_groups();
         for (i, data_group) in data_groups.iter_mut().enumerate() {
-            println!("\n  Data Group {}: {:?}", i, &*data_group);
+            println!("\n  Data Group {i}: {data_group}");
 
             let mut observers: Vec<(String, ChannelObserver)> = Vec::new();
 
@@ -72,7 +72,7 @@ fn main() -> Result<()> {
             );
             let channel_groups = data_group.get_channel_groups();
             for (j, channel_group) in channel_groups.iter().enumerate() {
-                println!("      Channel Group {j}: {channel_group:?}");
+                println!("      Channel Group {j}: {channel_group}");
 
                 if let Some(si) = channel_group.get_source_information() {
                     println!("        Source Info: {si}");

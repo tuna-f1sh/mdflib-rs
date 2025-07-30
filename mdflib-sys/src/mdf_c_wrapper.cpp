@@ -484,6 +484,11 @@ EXPORT const IChannel *ChannelGroupGetChannelByIndex(const IChannelGroup *group,
   return channels[index];
 }
 
+EXPORT const IChannel *ChannelGroupGetChannelByName(
+    const IChannelGroup *group, const char *name) {
+  return group->GetChannel(name);
+}
+
 EXPORT IChannel *ChannelGroupCreateChannel(IChannelGroup *group) {
   return group->CreateChannel();
 }

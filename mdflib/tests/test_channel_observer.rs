@@ -62,7 +62,7 @@ fn test_channel_observer_basic() {
 
         assert!(channel_count > 0, "Should have at least one channel");
 
-        let channel = cg.get_channel(0).unwrap();
+        let channel = cg.get_channel_by_index(0).unwrap();
 
         // Read the actual data into the data group
         // Note: For a proper test, we would need a DataGroup (not DataGroupRef)
@@ -157,7 +157,7 @@ fn test_channel_observer_multiple_channels() {
                 let cg = dg.get_channel_group_by_index(cg_index).unwrap();
 
                 for ch_index in 0..cg.get_channel_count() {
-                    let channel = cg.get_channel(ch_index).unwrap();
+                    let channel = cg.get_channel_by_index(ch_index).unwrap();
 
                     // Create a channel observer for each channel
                     let observer = unsafe {

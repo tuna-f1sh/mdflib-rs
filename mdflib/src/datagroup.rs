@@ -89,6 +89,12 @@ pub struct DataGroup {
     inner_ref: DataGroupRef,
 }
 
+impl std::fmt::Display for DataGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.inner_ref)
+    }
+}
+
 impl DataGroup {
     pub(crate) fn new(inner: *mut ffi::IDataGroup) -> Self {
         Self {

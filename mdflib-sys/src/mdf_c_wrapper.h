@@ -517,6 +517,7 @@ EXPORT uint64_t ChannelGroupGetNofSamples(const IChannelGroup* group);
 EXPORT void ChannelGroupSetNofSamples(IChannelGroup* group, uint64_t samples);
 EXPORT size_t ChannelGroupGetChannelCount(const IChannelGroup* group);
 EXPORT const IChannel* ChannelGroupGetChannelByIndex(const IChannelGroup* group, size_t index);
+EXPORT const IChannel *ChannelGroupGetChannelByName(const IChannelGroup *group, const char *name);
 EXPORT IChannel* ChannelGroupCreateChannel(IChannelGroup* group);
 EXPORT const IMetaData* ChannelGroupGetMetaData(const IChannelGroup* group);
 EXPORT IMetaData* ChannelGroupCreateMetaData(IChannelGroup* group);

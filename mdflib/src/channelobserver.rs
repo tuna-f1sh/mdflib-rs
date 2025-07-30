@@ -187,7 +187,7 @@ unsafe impl<'a> Sync for ChannelObserver<'a> {}
 /// # let file = reader.get_file().unwrap();
 /// # let data_group = file.get_data_group(0);
 /// # let channel_group = data_group.get_channel_group_by_index(0).unwrap();
-/// # let channel = channel_group.get_channel(0).unwrap();
+/// # let channel = channel_group.get_channel_by_index(0).unwrap();
 ///
 /// let observer = unsafe {
 ///     create_channel_observer(data_group.as_ptr(), channel_group.as_ptr(), channel.as_ptr())?
