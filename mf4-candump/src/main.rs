@@ -19,7 +19,6 @@ use tokio::time::Duration;
 #[derive(Debug, Parser)]
 #[command(name = "mf4-candump")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
-#[command(author = "mdflib-rs contributors")]
 #[command(about = "Logs CAN messages to MF4 files")]
 struct Args {
     /// CAN interface to use (e.g., can0)
@@ -148,7 +147,8 @@ async fn log_can_messages(
         for (i, _filter) in filters.iter().enumerate() {
             log::debug!("Filter {}: Applied", i + 1);
         }
-        socket.set_filters(filters)
+        socket
+            .set_filters(filters)
             .context("Failed to set CAN filters")?;
     }
 
@@ -218,11 +218,10 @@ async fn log_can_messages(
                         can_msg.set_extended_id(frame.is_extended());
                         can_msg.set_dlc(frame.dlc() as u8);
                         can_msg.set_data_bytes(frame.data());
-                        let ts = ts.unwrap();
+                        let ts = ts.unwrap_or_else(std::time::SystemTime::now);
 
                         // Save the CAN message to MDF file
                         let nano_secs = ts.duration_since(UNIX_EPOCH).unwrap().as_nanos();
-                        let timestamp: f64 = nano_secs as f64 / 1_000_000_000.0; // Convert to seconds
                         match frame {
                             CanFrame::Data(_) => {
                                 writer.save_can_message(&can_data_group, nano_secs as u64, &can_msg);
@@ -234,7 +233,12 @@ async fn log_can_messages(
                                 writer.save_can_message(&can_remote_group, nano_secs as u64, &can_msg);
                             }
                         }
-                        log::debug!("Captured CAN message: {timestamp:10.8}, ID={can_id:03X}, DLC={}", frame.dlc());
+
+                        if log::log_enabled!(log::Level::Debug) {
+                            let timestamp: f64 = nano_secs as f64 / 1_000_000_000.0; // Convert to seconds
+                            log::debug!("Captured CAN message: {timestamp:10.8}, ID={can_id:03X}, DLC={}", frame.dlc());
+                        }
+
                         message_count += 1;
                     }
                     Err(e) => {
@@ -319,7 +323,7 @@ async fn main() -> Result<()> {
         match parse_can_filter(filter_str) {
             Ok(filter) => can_filters.push(filter),
             Err(e) => {
-                log::error!("Invalid filter '{}': {}", filter_str, e);
+                log::error!("Invalid filter '{filter_str}': {e}");
                 return Err(e);
             }
         }

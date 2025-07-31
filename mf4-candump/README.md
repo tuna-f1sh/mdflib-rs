@@ -26,7 +26,7 @@ cargo build --bin mf4-candump
 ./target/debug/mf4-candump can0
 
 # Log for 60 seconds with custom output file
-./target/debug/mf4-candump can0 --output my_log.mf4 --duration 60
+./target/debug/mf4-candump can0 my_log.mf4 --duration 60
 
 # Enable verbose logging
 ./target/debug/mf4-candump can0 --verbose
@@ -35,8 +35,11 @@ cargo build --bin mf4-candump
 ### Command Line Options
 
 - `<interface>`: CAN interface to use (e.g., can0, can1, vcan0)
-- `-o, --output <FILE>`: Output file path (auto-generated if not specified)
+- `<output_file>`: Optional output file name (if not specified, auto-generated)
 - `-d, --duration <SECONDS>`: Recording duration in seconds (runs until Ctrl-C if not specified)
+- `-f, --filters <FILTERS>`: Optional socket filters in format `ID,MASK` (e.g., `123,FFF` for ID 0x123 with mask 0xFFF)
+- `-n, --samples <SAMPLES>`: Number of samples to log (default is unlimited)
+- `-H, --hardware-timestamp`: Use hardware timestamps if available (default is software timestamps)
 - `-v, --verbose`: Enable verbose logging
 - `-h, --help`: Print help information
 - `-V, --version`: Print version information
@@ -60,7 +63,6 @@ The generated MDF4 files contain:
   - `CAN_DataFrame`: Standard CAN data frames
   - `CAN_RemoteFrame`: CAN remote frames
   - `CAN_ErrorFrame`: CAN error frames  
-  - `CAN_OverloadFrame`: CAN overload frames
 - **Channels**: ID, DLC, data bytes, timestamps, and other CAN frame properties
 
 ## Prerequisites
@@ -93,30 +95,3 @@ sudo ip link set up vcan0
 # Send test messages in another terminal
 cansend vcan0 123#DEADBEEF
 ```
-
-## Integration with Analysis Tools
-
-The generated MDF4 files can be opened with:
-- Vector CANape
-- ETAS INCA
-- National Instruments DIAdem
-- MATLAB Vehicle Network Toolbox
-- Python libraries like asammdf
-- Any MDF4-compatible tool
-
-## Dependencies
-
-- [mdflib-rs](../mdflib): Safe Rust bindings for mdflib
-- [socketcan-rs](https://github.com/tuna-f1sh/socketcan-rs): SocketCAN bindings with timestamp support
-- tokio: Async runtime
-- clap: Command line argument parsing
-- chrono: Date/time handling
-- anyhow: Error handling
-
-## License
-
-Licensed under either of:
-- Apache License, Version 2.0
-- MIT License
-
-at your option.
