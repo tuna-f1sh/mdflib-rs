@@ -1,0 +1,26 @@
+[package]
+name = "mf4-candump"
+version = "0.1.0"
+edition = "2021"
+description = "CAN message logger to MF4 files using socketcan"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tuna-f1sh/mdflib-rs"
+keywords = ["can", "mdf", "automotive", "socketcan"]
+categories = ["command-line-utilities", "automotive"]
+
+[[bin]]
+name = "mf4-candump"
+path = "src/main.rs"
+
+[dependencies]
+mdflib = { path = "../mdflib", version = "0.1.0" }
+socketcan = { git = "https://github.com/tuna-f1sh/socketcan-rs", branch = "ts" }
+clap = { version = "4.0", features = ["derive"] }
+log = "0.4"
+env_logger = "0.11"
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1.0", features = ["full"] }
+signal-hook = "0.3"
+signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
+futures = "0.3"
+anyhow = "1.0"

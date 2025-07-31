@@ -126,11 +126,15 @@ impl MdfWriter {
     }
 
     /// Save a sample
+    ///
+    /// Time is absolute time in nanoseconds since the epoch (1970-01-01T00:00:00Z).
     pub fn save_sample(&mut self, group: &ChannelGroupRef, time: u64) {
         unsafe { MdfWriterSaveSample(self.inner, group.inner, time) }
     }
 
     /// Save a CAN message
+    ///
+    /// Time is absolute time in nanoseconds since the epoch (1970-01-01T00:00:00Z).
     pub fn save_can_message(
         &mut self,
         group: &ChannelGroupRef,
@@ -141,11 +145,15 @@ impl MdfWriter {
     }
 
     /// Start measurement
+    ///
+    /// Time is absolute time in nanoseconds since the epoch (1970-01-01T00:00:00Z).
     pub fn start_measurement(&mut self, start_time: u64) {
         unsafe { MdfWriterStartMeasurement(self.inner, start_time) }
     }
 
     /// Stop measurement
+    ///
+    /// Time is absolute time in nanoseconds since the epoch (1970-01-01T00:00:00Z).
     pub fn stop_measurement(&mut self, stop_time: u64) {
         unsafe { MdfWriterStopMeasurement(self.inner, stop_time) }
     }
