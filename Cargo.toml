@@ -1,5 +1,5 @@
 [workspace]
-members = ["mdflib", "mdflib-sys"]
+members = ["mdflib", "mdflib-sys", "mf4-candump"]
 default-members = ["mdflib", "mdflib-sys"]
 resolver = "2"
 

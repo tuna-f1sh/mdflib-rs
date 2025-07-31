@@ -24,6 +24,23 @@ You can install these dependencies using your system's package manager.
 
 Review the [mdflib documentation](https://ihedvall.github.io/mdflib/), the 'examples/' and 'tests/' directories in this repository.
 
+### CAN Message Logging with mf4-candump
+
+This repository includes `mf4-candump`, a CAN message logger that writes to MF4 files, similar to `candump` but outputting to MDF4 format instead of stdout.
+
+```bash
+# Build the binary
+cargo build --bin mf4-candump
+
+# Log CAN messages from can0 interface
+./target/debug/mf4-candump can0
+
+# Log for 60 seconds with custom output file
+./target/debug/mf4-candump can0 --output my_log.mf4 --duration 60
+```
+
+See the [mf4-candump README](mf4-candump/README.md) for detailed usage instructions.
+
 > [!WARNING]
 > The current implementation is mostly `unsafe` due to the nature of FFI (Foreign Function Interface) with C++. There are also some lifetime privledges taken to allow for full access to the C++ API. Use with caution and ensure you understand the implications of using `unsafe` code in Rust.
 
