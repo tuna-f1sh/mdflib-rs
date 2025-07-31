@@ -4,11 +4,11 @@
 //! to MDF4 format instead of stdout. Uses socketcan-rs for CAN interface access.
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
-use clap::{Arg, Command};
+use clap::Parser;
 use mdflib::{writer, CanMessage};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook_tokio::Signals;
-use socketcan::{CanFrame, CanSocketTimestamp, EmbeddedFrame, Socket};
+use socketcan::{CanFilter, CanFrame, CanSocketTimestamp, EmbeddedFrame, Socket, SocketOptions};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -16,65 +16,58 @@ use std::time::UNIX_EPOCH;
 use tokio::time::Duration;
 
 /// Command line arguments structure
-#[derive(Debug)]
+#[derive(Debug, Parser)]
+#[command(name = "mf4-candump")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
+#[command(author = "mdflib-rs contributors")]
+#[command(about = "Logs CAN messages to MF4 files")]
 struct Args {
+    /// CAN interface to use (e.g., can0)
     interface: String,
+
+    /// Output file path (auto-generated if not specified)
     output: Option<PathBuf>,
+
+    /// CAN filters in format id,mask (can be specified multiple times)
+    #[arg(short = 'f', long = "filter", value_name = "ID,MASK")]
+    filters: Vec<String>,
+
+    /// Recording duration in seconds (runs until Ctrl-C if not specified)
+    #[arg(short = 'd', long = "duration", value_name = "SECONDS")]
     duration: Option<u64>,
+
+    /// Stop after receiving n CAN messages
+    #[arg(short = 'n', long = "samples", value_name = "COUNT")]
+    samples: Option<u64>,
+
+    /// Enable hardware timestamps (default is software timestamps)
+    #[arg(short = 'H', long = "hardware-timestamps")]
     hardware_timestamps: bool,
+
+    /// Enable verbose logging
+    #[arg(short = 'v', long = "verbose")]
     verbose: bool,
 }
 
-/// Parse command line arguments
-fn parse_args() -> Args {
-    let matches = Command::new("mf4-candump")
-        .version(env!("CARGO_PKG_VERSION"))
-        .author("mdflib-rs contributors")
-        .about("Logs CAN messages to MF4 files")
-        .arg(
-            Arg::new("interface")
-                .help("CAN interface to use (e.g., can0)")
-                .required(true)
-                .index(1),
-        )
-        .arg(
-            Arg::new("output")
-                .short('o')
-                .long("output")
-                .value_name("FILE")
-                .help("Output file path (auto-generated if not specified)"),
-        )
-        .arg(
-            Arg::new("duration")
-                .short('d')
-                .long("duration")
-                .value_name("SECONDS")
-                .help("Recording duration in seconds (runs until Ctrl-C if not specified)")
-                .value_parser(clap::value_parser!(u64)),
-        )
-        .arg(
-            Arg::new("hardware-timestamps")
-                .short('H')
-                .long("hardware-timestamps")
-                .help("Enable hardware timestamps (default is software timestamps)")
-                .action(clap::ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("verbose")
-                .short('v')
-                .long("verbose")
-                .help("Enable verbose logging")
-                .action(clap::ArgAction::SetTrue),
-        )
-        .get_matches();
-
-    Args {
-        interface: matches.get_one::<String>("interface").unwrap().clone(),
-        output: matches.get_one::<String>("output").map(PathBuf::from),
-        duration: matches.get_one::<u64>("duration").copied(),
-        hardware_timestamps: matches.get_flag("hardware-timestamps"),
-        verbose: matches.get_flag("verbose"),
+/// Parse CAN filter from string format "id,mask"
+fn parse_can_filter(filter_str: &str) -> Result<CanFilter> {
+    let parts: Vec<&str> = filter_str.split(',').collect();
+    if parts.len() != 2 {
+        return Err(anyhow::anyhow!(
+            "Invalid filter format '{}'. Expected format: id,mask",
+            filter_str
+        ));
     }
+
+    let id = u32::from_str_radix(parts[0].trim_start_matches("0x"), 16)
+        .or_else(|_| parts[0].parse::<u32>())
+        .context(format!("Invalid CAN ID '{}'", parts[0]))?;
+
+    let mask = u32::from_str_radix(parts[1].trim_start_matches("0x"), 16)
+        .or_else(|_| parts[1].parse::<u32>())
+        .context(format!("Invalid CAN mask '{}'", parts[1]))?;
+
+    Ok(CanFilter::new(id, mask))
 }
 
 /// Generate an automatic filename based on current datetime and interface
@@ -131,7 +124,9 @@ async fn log_can_messages(
     mut writer: writer::MdfWriter,
     interface: &str,
     hardware_timestamps: bool,
+    filters: &[CanFilter],
     duration: Option<u64>,
+    max_samples: Option<u64>,
     running: Arc<AtomicBool>,
 ) -> Result<()> {
     log::info!("Opening CAN socket on interface: {interface}");
@@ -146,6 +141,16 @@ async fn log_can_messages(
         .context("Failed to create CAN address from interface")?;
     let socket = CanSocketTimestamp::open_with_timestamping_mode(&addr, timestamping_mode)
         .context("Failed to open CAN socket - is the interface up and accessible?")?;
+
+    // Apply CAN filters if specified
+    if !filters.is_empty() {
+        log::info!("Applying {} CAN filter(s)", filters.len());
+        for (i, _filter) in filters.iter().enumerate() {
+            log::debug!("Filter {}: Applied", i + 1);
+        }
+        socket.set_filters(filters)
+            .context("Failed to set CAN filters")?;
+    }
 
     // Get the start time in nanoseconds
     let start_time = std::time::SystemTime::now()
@@ -192,6 +197,14 @@ async fn log_can_messages(
         }
         result = async {
             while running.load(Ordering::Relaxed) {
+                // Check if we've reached the sample limit
+                if let Some(max) = max_samples {
+                    if message_count >= max {
+                        log::info!("Reached sample limit of {max} messages");
+                        break;
+                    }
+                }
+
                 match socket.read_frame() {
                     Ok((frame, ts)) => {
                         // Convert socketcan frame to mdflib CanMessage
@@ -290,7 +303,7 @@ async fn setup_signal_handler(running: Arc<AtomicBool>) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = parse_args();
+    let args = Args::parse();
 
     // Setup logging
     let log_level = if args.verbose { "debug" } else { "info" };
@@ -299,6 +312,18 @@ async fn main() -> Result<()> {
     // Setup mdflib logging
     mdflib::log::set_log_callback_1(Some(mdflib::log::log_callback))
         .context("Failed to setup mdflib logging")?;
+
+    // Parse CAN filters
+    let mut can_filters = Vec::new();
+    for filter_str in &args.filters {
+        match parse_can_filter(filter_str) {
+            Ok(filter) => can_filters.push(filter),
+            Err(e) => {
+                log::error!("Invalid filter '{}': {}", filter_str, e);
+                return Err(e);
+            }
+        }
+    }
 
     // Determine output file path
     let output_path = args
@@ -313,6 +338,12 @@ async fn main() -> Result<()> {
     } else {
         log::info!("Duration: until Ctrl-C");
     }
+    if let Some(samples) = args.samples {
+        log::info!("Sample limit: {samples} messages");
+    }
+    if !can_filters.is_empty() {
+        log::info!("CAN filters: {} active", can_filters.len());
+    }
 
     // Setup signal handling
     let running = Arc::new(AtomicBool::new(true));
@@ -326,7 +357,9 @@ async fn main() -> Result<()> {
         writer,
         &args.interface,
         args.hardware_timestamps,
+        &can_filters,
         args.duration,
+        args.samples,
         running,
     )
     .await
