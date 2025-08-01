@@ -11,25 +11,20 @@ A CAN message logger that writes to MF4 files, similar to `candump` but outputti
 - Graceful shutdown on Ctrl-C or specified duration
 - Verbose logging support
 
-## Installation
-
-From the repository root:
-
-```bash
-cargo build --bin mf4-candump
-```
-
 ## Usage
 
 ```bash
 # Log CAN messages from can0 interface until Ctrl-C
-./target/debug/mf4-candump can0
+cargo run -- can0
 
-# Log for 60 seconds with custom output file
-./target/debug/mf4-candump can0 my_log.mf4 --duration 60
+# Enable verbose logging (can also use RUST_LOG environment variable)
+cargo run -- can0 --verbose
 
-# Enable verbose logging
-./target/debug/mf4-candump can0 --verbose
+# Log for 60 seconds or 1000 samples with custom output file
+cargo run -- can0 my_log.mf4 --duration 60 --samples 1000
+
+# Log with multiple socket filters: ID,MASK - like candump
+cargo run -- can0 --filter 0x123,0x7FF --filter 456,0x700
 ```
 
 ### Command Line Options
