@@ -43,6 +43,10 @@ struct Args {
     #[arg(short = 'H', long = "hardware-timestamps")]
     hardware_timestamps: bool,
 
+    /// Metadata to add to the MDF file in format key=value (can be specified multiple times)
+    #[arg(short = 'm', long = "metadata", value_name = "KEY=VALUE")]
+    metadata: Option<Vec<String>>,
+
     /// Enable verbose logging
     #[arg(short = 'v', long = "verbose")]
     verbose: bool,
@@ -77,7 +81,11 @@ fn generate_filename(interface: &str) -> PathBuf {
 }
 
 /// Setup MDF writer with proper headers and metadata
-fn setup_mdf_writer(file_path: &PathBuf, interface: &str) -> Result<writer::MdfWriter> {
+fn setup_mdf_writer(
+    file_path: &PathBuf,
+    interface: &str,
+    metadata: &Option<Vec<String>>,
+) -> Result<writer::MdfWriter> {
     log::info!("Creating MDF4 file: {}", file_path.display());
 
     let mut writer = writer::MdfWriter::new(writer::MdfWriterType::MdfBusLogger, file_path)
@@ -105,6 +113,18 @@ fn setup_mdf_writer(file_path: &PathBuf, interface: &str) -> Result<writer::MdfW
 
             let now: DateTime<Local> = Local::now();
             history.set_time(now.timestamp_nanos_opt().unwrap_or(0) as u64);
+        }
+
+        if let Some(meta) = metadata {
+            let mut header_meta = header.create_metadata().unwrap();
+            for entry in meta {
+                let parts: Vec<&str> = entry.splitn(2, '=').collect();
+                if parts.len() == 2 {
+                    header_meta.set_property_as_string(parts[0], parts[1])?;
+                } else {
+                    log::warn!("Invalid metadata entry '{entry}', expected format key=value",);
+                }
+            }
         }
     }
 
@@ -354,7 +374,7 @@ async fn main() -> Result<()> {
     setup_signal_handler(running.clone()).await?;
 
     // Setup MDF writer
-    let writer = setup_mdf_writer(&output_path, &args.interface)?;
+    let writer = setup_mdf_writer(&output_path, &args.interface, &args.metadata)?;
 
     // Start logging
     match log_can_messages(
