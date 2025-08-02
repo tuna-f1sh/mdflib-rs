@@ -1,4 +1,49 @@
 //! MDF file reader implementation
+//!
+//! This module provides a safe wrapper around the `mdflib` C++ library's `MdfReader`.
+//! It allows for reading MDF files, accessing their headers, data groups, and channel information.
+//!
+//! It's probably helpful to read the [mdflib reader documentation](https://ihedvall.github.io/mdflib/mdfreader.html) for more details on how to use the reader.
+//!
+//! See 'examples/read_mdf.rs' for a complete example of how to use this reader.
+//!
+//! # Example
+//!
+//! ```no_run
+//! use mdflib::{MdfReader, Result};
+//!
+//! fn main() -> Result<()> {
+//!     // Create a new reader for an MDF file.
+//!     let mut reader = MdfReader::new("tests/test.mdf")?;
+//!
+//!     // Read all metadata from the file.
+//!     reader.read_everything_but_data()?;
+//!
+//!     if let Some(header) = reader.get_header() {
+//!         println!("File header: {}", header);
+//!     }
+//!
+//!     // Iterate through the data groups and print channel information.
+//!     for i in 0..reader.get_data_group_count() {
+//!         if let Some(dg) = reader.get_data_group(i) {
+//!             for j in 0..dg.get_channel_group_count() {
+//!                 if let Some(cg) = dg.get_channel_group_by_index(j) {
+//!                     println!("Data Group {}: {} channels", i, cg.get_channel_count());
+//!                     for k in 0..cg.get_channel_count() {
+//!                         if let Some(cn) = cg.get_channel_by_index(k) {
+//!                             println!("  - Channel {}: {}", k, cn.get_name());
+//!                         }
+//!                     }
+//!                 }
+//!             }
+//!         }
+//!     }
+//!
+//!     reader.close();
+//!
+//!     Ok(())
+//! }
+//! ```
 use crate::{
     datagroup::{DataGroup, DataGroupRef},
     error::{MdfError, Result},

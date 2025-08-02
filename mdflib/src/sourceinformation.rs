@@ -1,6 +1,8 @@
-//! SourceInformation wrapper for mdflib
+//! SourceInformation wrapper for mdflib ISourceInformation
 //!
-//! This module provides safe Rust wrappers around the mdflib ISourceInformation functionality.
+//! Source information is used to describe the source of a signal. This module
+//! provides access to the source information's metadata, such as its name,
+//! description, and path.
 
 use crate::error::Result;
 use crate::metadata::{MetaData, MetaDataRef};

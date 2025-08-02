@@ -37,26 +37,30 @@ fn main() -> Result<()> {
     println!("Reading file metadata...");
     reader.read_everything_but_data()?;
 
+    if let Some(header) = reader.get_header() {
+        println!("\nHeader: {header}");
+
+        println!("\nFile Histories:");
+        for history in header.get_file_histories() {
+            println!("  {history}");
+        }
+
+        if let Some(meta) = header.get_metadata() {
+            println!("\nMetadata XML: {:?}", meta.get_xml_snippet());
+        }
+
+        println!("\nEvents:");
+        for event in header.get_events() {
+            println!("  {event}");
+        }
+    }
+
     if let Some(file) = reader.get_file() {
         println!("File: {file}");
 
         println!("\nAttachments:");
         for attachment in file.get_attachments() {
             println!("  {attachment}");
-        }
-
-        if let Some(header) = reader.get_header() {
-            println!("\nHeader: {header}");
-
-            println!("\nFile Histories:");
-            for history in header.get_file_histories() {
-                println!("  {history}");
-            }
-
-            println!("\nEvents:");
-            for event in header.get_events() {
-                println!("  {event}");
-            }
         }
 
         println!("\nData Groups ({})", file.get_data_group_count());

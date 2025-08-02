@@ -1,6 +1,7 @@
-//! ChannelObserver wrapper for mdflib
+//! ChannelObserver wrapper for mdflib IChannelObserver
 //!
-//! This module provides safe Rust wrappers around the mdflib IChannelObserver functionality.
+//! A channel observer is used to read the data from a channel. It provides
+//! access to the raw channel values as well as the converted engineering values.
 
 use crate::error::Result;
 use mdflib_sys as ffi;

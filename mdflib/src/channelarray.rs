@@ -1,6 +1,7 @@
-//! ChannelArray wrapper for mdflib
+//! ChannelArray wrapper for mdflib IChannelArray
 //!
-//! This module provides safe Rust wrappers around the mdflib IChannelArray functionality.
+//! A channel array is a special type of channel that represents an array of values.
+//! This is used for signals that are arrays, such as a spectrum or a map.
 
 use mdflib_sys as ffi;
 use std::marker::PhantomData;

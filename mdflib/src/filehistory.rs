@@ -1,6 +1,8 @@
-//! FileHistory wrapper for mdflib
+//! FileHistory wrapper for mdflib IFileHistory
 //!
-//! This module provides safe Rust wrappers around the mdflib IFileHistory functionality.
+//! A file history is a record of a change that was made to an [`crate::MdfFile`]. This
+//! module provides access to the file history's metadata, such as the time of
+//! the change, the tool that made the change, and the user who made the change.
 
 use crate::error::Result;
 use crate::metadata::MetaDataRef;

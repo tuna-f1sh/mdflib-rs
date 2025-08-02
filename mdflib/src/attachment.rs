@@ -1,6 +1,8 @@
 //! Attachment wrapper for mdflib
 //!
-//! This module provides safe Rust wrappers around the mdflib IAttachment functionality.
+//! An attachment is a file that is embedded or referenced within an MDF file.
+//! This module provides access to the attachment's metadata, such as its filename,
+//! file type, and MD5 checksum.
 
 use crate::error::Result;
 use crate::metadata::{MetaData, MetaDataRef};

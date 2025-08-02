@@ -1,3 +1,9 @@
+//! DataGroup wrapper for mdflib IDataGroup
+//!
+//! A data group is a collection of channel groups. This module provides access
+//! to the data group's metadata, such as its description, as well as the channel
+//! groups that it contains.
+
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
 use std::ops::Deref;

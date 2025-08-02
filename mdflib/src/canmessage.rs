@@ -1,3 +1,19 @@
+//! CAN message wrapper for mdflib CanMessage
+//!
+//! A CAN message is a message that is sent over a CAN bus. This module provides
+//! access to the message's ID, data, and other metadata.
+//!
+//! ```no_run
+//! use mdflib::CanMessage;
+//! let mut msg = CanMessage::new();
+//!
+//! msg.set_message_id(0x123);
+//! msg.set_extended_id(false);
+//! msg.set_dlc(8);
+//! let test_data = vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
+//! msg.set_data_bytes(&test_data);
+//! ```
+
 use mdflib_sys as ffi;
 use std::marker::PhantomData;
 use std::ops::Deref;

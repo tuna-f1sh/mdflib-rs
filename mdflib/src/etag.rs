@@ -1,6 +1,7 @@
-//! ETag wrapper for mdflib
+//! ETag wrapper for mdflib IETag
 //!
-//! This module provides safe Rust wrappers around the mdflib ETag functionality.
+//! An ETag is a key-value pair that can be used to store metadata in an MDF file.
+//! This module provides access to the ETag's name, description, and value.
 
 use crate::error::{MdfError, Result};
 use mdflib_sys as ffi;

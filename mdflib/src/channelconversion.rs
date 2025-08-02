@@ -1,6 +1,8 @@
-//! ChannelConversion wrapper for mdflib
+//! ChannelConversion wrapper for mdflib IChannelConversion
 //!
-//! This module provides safe Rust wrappers around the mdflib IChannelConversion functionality.
+//! A channel conversion is a formula that is used to convert the raw value of a
+//! channel to a physical value. This module provides access to the conversion's
+//! parameters, such as the formula, unit, and range.
 
 use crate::error::Result;
 use crate::metadata::{MetaData, MetaDataRef};

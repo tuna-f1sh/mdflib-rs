@@ -1,6 +1,7 @@
-//! MetaData wrapper for mdflib
+//! MetaData wrapper for mdflib IMetaData
 //!
-//! This module provides safe Rust wrappers around the mdflib IMetaData functionality.
+//! Metadata is a collection of key-value pairs that can be used to store
+//! additional information about an MDF file as XML.
 
 use crate::error::Result;
 use crate::etag::ETag;

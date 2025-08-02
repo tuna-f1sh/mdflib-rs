@@ -1,3 +1,9 @@
+//! Channel wrapper for mdflib IChannel
+//!
+//! A channel represents a single measurement signal in an MDF file. It contains
+//! metadata about the signal, such as its name, unit, and data type. It also
+//! provides access to the channel's data through a channel observer.
+
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;

@@ -1,3 +1,10 @@
+//! MDF file wrapper for mdflib MdfFile
+//!
+//! An MDF file is the top-level object in the mdflib library - used for both
+//! [`crate::MdfReader`] and [`crate::MdfWriter`]. It contains all of the data and
+//! metadata for a measurement. This module provides access to the file's
+//! header, data groups, and attachments.
+
 use mdflib_sys as ffi;
 use std::ffi::CStr;
 use std::ops::Deref;
@@ -162,6 +169,18 @@ impl MdfFile {
                 None
             } else {
                 Some(Attachment::new(attachment))
+            }
+        }
+    }
+
+    /// Gets the header from the file.
+    pub fn get_header(&self) -> Option<MdfHeaderRef> {
+        unsafe {
+            let header = ffi::MdfFileGetHeader(self.inner);
+            if header.is_null() {
+                None
+            } else {
+                Some(MdfHeaderRef::new(header))
             }
         }
     }

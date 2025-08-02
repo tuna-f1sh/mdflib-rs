@@ -1,3 +1,10 @@
+//! Header wrapper for mdflib IHeader
+//!
+//! The header is the main entry point for accessing data in an [`crate::MdfFile`]. It
+//! contains information about the measurement, such as the start time, author,
+//! and project. It also provides access to the file's data groups, attachments,
+//! and file history.
+
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
 use std::ops::Deref;

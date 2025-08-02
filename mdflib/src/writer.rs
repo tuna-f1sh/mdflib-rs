@@ -1,4 +1,49 @@
-//! MDF file writer implementation
+//! MDF file writer implementation provides a safe wrapper around the `mdflib`
+//! C++ library's `MdfWriter`. It allows for creating and writing data to MDF
+//! files.
+//!
+//! It's probably helpful to read the [mdflib writer documentation](https://ihedvall.github.io/mdflib/mdfwriter.html) for more details on how to use the writer.
+//!
+//! # Example
+//!
+//! ```no_run
+//! use mdflib::{MdfWriter, MdfWriterType, Result};
+//! use std::time::{SystemTime, UNIX_EPOCH};
+//!
+//! fn main() -> Result<()> {
+//!     // Create a new writer for an MDF file.
+//!     let mut writer = MdfWriter::new(MdfWriterType::Mdf4Basic, "test.mdf")?;
+//!
+//!     // Create a new data group.
+//!     if let Some(mut dg) = writer.create_data_group() {
+//!         // Create a new channel group.
+//!         if let Some(mut cg) = dg.create_channel_group() {
+//!             // Create a new channel.
+//!             if let Some(mut cn) = cg.create_channel() {
+//!                 cn.set_unit("s");
+//!             }
+//!         }
+//!     }
+//!
+//!     // Initialize the measurement.
+//!     writer.init_measurement();
+//!
+//!     // Start the measurement.
+//!     let start_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64;
+//!     writer.start_measurement(start_time);
+//!
+//!     // ... write some data ...
+//!
+//!     // Stop the measurement.
+//!     let stop_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64;
+//!     writer.stop_measurement(stop_time);
+//!
+//!     // Finalize the measurement.
+//!     writer.finalize_measurement();
+//!
+//!     Ok(())
+//! }
+//! ```
 use crate::{
     canmessage::CanMessageRef,
     channelgroup::ChannelGroupRef,

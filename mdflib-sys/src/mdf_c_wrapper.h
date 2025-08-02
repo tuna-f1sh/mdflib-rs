@@ -496,6 +496,7 @@ EXPORT size_t MdfFileGetProgramId(const MdfFile *file, char *buffer, size_t max_
 // EXPORT void MdfFileReadEverythingButData(MdfFile *file);
 // EXPORT bool MdfFileWrite(MdfFile *file);
 EXPORT bool MdfFileIsFinalizedDone(const MdfFile *file);
+EXPORT const IHeader* MdfFileGetHeader(const MdfFile* file);
 
 // IDataGroup functions
 EXPORT uint64_t DataGroupGetIndex(const IDataGroup* group);

@@ -1,3 +1,9 @@
+//! ChannelGroup wrapper for mdflib IChannelGroup
+//!
+//! A channel group is a collection of channels that are sampled at the same time.
+//! This module provides access to the channel group's metadata, such as its name
+//! and description, as well as the channels that it contains.
+
 use mdflib_sys as ffi;
 use std::ffi::{CStr, CString};
 use std::ops::Deref;

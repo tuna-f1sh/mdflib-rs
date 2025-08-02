@@ -1,6 +1,8 @@
-//! Event wrapper for mdflib
+//! Event wrapper for mdflib IEvent
 //!
-//! This module provides safe Rust wrappers around the mdflib IEvent functionality.
+//! An event is a marker in the MDF file that can be used to indicate a specific
+//! point in time. This module provides access to the event's metadata, such as
+//! its name, description, and time.
 
 use crate::error::Result;
 use crate::metadata::MetaDataRef;

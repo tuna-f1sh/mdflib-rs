@@ -1,23 +1,19 @@
-//! Safe Rust bindings for mdflib
+//! # mdflib
 //!
-//! This crate provides a safe, high-level interface to the mdflib C++ library
-//! for reading and writing MDF (Measurement Data Format) files.
+//! Safe Rust bindings for the `mdflib` C++ library. `mdflib` is a library for reading and writing MDF (Measurement Data Format) files.
+//! This crate provides a high-level API that wraps the C++ library in safe Rust code.
 //!
-//! # Features
+//! ## Features
 //!
-//! - `bundled` (default): Compile and link mdflib from source
-//! - `system`: Link against system-installed mdflib
+//! *   Read and write MDF files (versions 3.x and 4.x).
+//! *   Access to file metadata and channel information.
+//! *   Read and write channel data.
+//! *   `bundled` (default): Compiles and statically links the `mdflib` C++ library.
+//! *   `system`: Links against a system-installed version of `mdflib`.
 //!
-//! # Examples
-//!
-//! ```no_run
-//! use mdflib::{MdfReader, Result};
-//!
-//! fn read_mdf_file() -> Result<()> {
-//!     let mut reader = MdfReader::new("example.mdf").unwrap();
-//!     Ok(())
-//! }
-//! ```
+//! See [`crate::MdfReader`] and [`crate::MdfWriter`] docs for examples of how
+//! to use the library. The 'examples/read_mdf.rs' and workspace binary
+//! 'mf4_candump' provide additional usage examples.
 
 pub mod canmessage;
 pub mod channel;
@@ -50,6 +46,7 @@ pub use error::{MdfError, Result};
 pub use file::{MdfFile, MdfFileRef};
 pub use header::{MdfHeader, MdfHeaderRef};
 pub use reader::MdfReader;
+pub use writer::{MdfWriter, MdfWriterType};
 
 // Re-export new MDF object types
 pub use attachment::{Attachment, AttachmentRef};

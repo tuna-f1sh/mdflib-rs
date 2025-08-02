@@ -2,6 +2,8 @@
 //!
 //! This module provides a safe interface to the logging capabilities of the
 //! underlying `mdflib` C++ library. It allows users to set a custom logging
+//! callback function to handle log messages from the library.
+
 use crate::error::{MdfError, Result};
 use mdflib_sys as ffi;
 use std::ffi::CStr;
@@ -17,7 +19,6 @@ pub type LogCallback2 =
     extern "C" fn(severity: MdfLogSeverity, function: *const u8, text: *const u8);
 
 /// A static variable to hold the user-defined logging callback.
-///
 static LOG_CALLBACK_1: Mutex<Option<LogCallback1>> = Mutex::new(None);
 static LOG_CALLBACK_2: Mutex<Option<LogCallback2>> = Mutex::new(None);
 
@@ -83,6 +84,23 @@ pub fn set_log_callback_1(callback: Option<LogCallback1>) -> Result<()> {
     Ok(())
 }
 
+/// Sets a custom logging function with function name.
+///
+/// # Example
+///
+/// ```
+/// use mdflib::log::{set_log_callback_2, MdfLogSeverity};
+/// use std::ffi::CStr;
+/// use std::os::raw::c_char;
+///
+/// extern "C" fn my_log_callback(severity: MdfLogSeverity, function: *const u8, text: *const u8) {
+///    let function = unsafe { CStr::from_ptr(function as *const c_char).to_string_lossy() };
+///    let text = unsafe { CStr::from_ptr(text as *const c_char).to_string_lossy() };
+///    println!("[{:?}] [{}] {}", severity, function, text);
+/// }
+///
+/// set_log_callback_2(Some(my_log_callback)).unwrap();
+/// ```
 pub fn set_log_callback_2(callback: Option<LogCallback2>) -> Result<()> {
     unsafe {
         if let Some(callback) = callback {
@@ -106,12 +124,12 @@ pub fn set_log_callback_2(callback: Option<LogCallback2>) -> Result<()> {
 pub extern "C" fn log_callback(severity: MdfLogSeverity, text: *const u8) {
     let text = unsafe { CStr::from_ptr(text as *const c_char).to_string_lossy() };
     match severity {
-        MdfLogSeverity::kTrace => log::trace!("[{severity:?}]: {text}"),
-        MdfLogSeverity::kDebug => log::debug!("[{severity:?}]: {text}"),
+        MdfLogSeverity::kTrace => log::trace!("[{severity:?}] {text}"),
+        MdfLogSeverity::kDebug => log::debug!("[{severity:?}] {text}"),
         MdfLogSeverity::kInfo | MdfLogSeverity::kNotice => {
-            log::info!("[{severity:?}]: {text}")
+            log::info!("[{severity:?}] {text}")
         }
-        _ => log::warn!("[{severity:?}]: {text}"),
+        _ => log::warn!("[{severity:?}] {text}"),
     }
 }
 
@@ -124,11 +142,11 @@ pub extern "C" fn log_callback_with_function(
     let function = unsafe { CStr::from_ptr(function as *const c_char).to_string_lossy() };
     let text = unsafe { CStr::from_ptr(text as *const c_char).to_string_lossy() };
     match severity {
-        MdfLogSeverity::kTrace => log::trace!("[{function}][{severity:?}]: {text}"),
-        MdfLogSeverity::kDebug => log::debug!("[{function}][{severity:?}]: {text}"),
+        MdfLogSeverity::kTrace => log::trace!("[{function}] [{severity:?}]: {text}"),
+        MdfLogSeverity::kDebug => log::debug!("[{function}] [{severity:?}]: {text}"),
         MdfLogSeverity::kInfo | MdfLogSeverity::kNotice => {
-            log::info!("[{function}][{severity:?}]: {text}")
+            log::info!("[{function}] [{severity:?}]: {text}")
         }
-        _ => log::warn!("[{function}][{severity:?}]: {text}"),
+        _ => log::warn!("[{function}] [{severity:?}]: {text}"),
     }
 }
