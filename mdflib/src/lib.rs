@@ -27,6 +27,12 @@ pub mod writer;
 
 pub mod log;
 
+// Re-export binding enums
+pub use mdflib_sys::{
+    ArrayStorage, ArrayType, BusType, CanErrorType, ChannelType, ConversionType, ETagDataType,
+    EventCause, EventType, MdfBusType, MessageType, RangeType, SourceType, SyncType,
+};
+
 // New MDF object modules
 pub mod attachment;
 pub mod channelarray;

@@ -5,7 +5,7 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
 use clap::Parser;
-use mdflib::{writer, CanMessage};
+use mdflib::{writer, CanMessage, MdfBusType};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook_tokio::Signals;
 use socketcan::{CanFilter, CanFrame, CanSocketTimestamp, EmbeddedFrame, Socket, SocketOptions};
@@ -92,7 +92,7 @@ fn setup_mdf_writer(
         .context("Failed to create MDF writer")?;
 
     // Configure for CAN bus logging
-    writer.set_bus_type(1); // CAN bus type
+    writer.set_bus_type(MdfBusType::CAN as u16);
 
     if !writer.create_bus_log_configuration() {
         return Err(anyhow::anyhow!("Failed to create bus log configuration"));
