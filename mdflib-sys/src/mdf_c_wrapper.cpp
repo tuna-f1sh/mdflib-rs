@@ -888,11 +888,7 @@ EXPORT CanMessage *CanMessageInit() { return new CanMessage; }
 
 EXPORT void CanMessageUnInit(CanMessage *can) { delete can; }
 
-EXPORT uint32_t CanMessageGetMessageId(CanMessage *can) {
-  return can->MessageId();
-}
-
-EXPORT uint32_t CanMessageGetMessageIdConst(const CanMessage *can) {
+EXPORT uint32_t CanMessageGetMessageId(const CanMessage *can) {
   return can->MessageId();
 }
 
@@ -900,15 +896,9 @@ EXPORT void CanMessageSetMessageId(CanMessage *can, uint32_t msgId) {
   can->MessageId(msgId);
 }
 
-EXPORT uint32_t CanMessageGetCanId(CanMessage *can) { return can->CanId(); }
+EXPORT uint32_t CanMessageGetCanId(const CanMessage *can) { return can->CanId(); }
 
-EXPORT uint32_t CanMessageGetCanIdConst(const CanMessage *can) { return can->CanId(); }
-
-EXPORT bool CanMessageGetExtendedId(CanMessage *can) {
-  return can->ExtendedId();
-}
-
-EXPORT bool CanMessageGetExtendedIdConst(const CanMessage *can) {
+EXPORT bool CanMessageGetExtendedId(const CanMessage *can) {
   return can->ExtendedId();
 }
 
@@ -916,17 +906,11 @@ EXPORT void CanMessageSetExtendedId(CanMessage *can, bool extendedId) {
   can->ExtendedId(extendedId);
 }
 
-EXPORT uint8_t CanMessageGetDlc(CanMessage *can) { return can->Dlc(); }
-
-EXPORT uint8_t CanMessageGetDlcConst(const CanMessage *can) { return can->Dlc(); }
+EXPORT uint8_t CanMessageGetDlc(const CanMessage *can) { return can->Dlc(); }
 
 EXPORT void CanMessageSetDlc(CanMessage *can, uint8_t dlc) { can->Dlc(dlc); }
 
-EXPORT size_t CanMessageGetDataLength(CanMessage *can) {
-  return can->DataLength();
-}
-
-EXPORT size_t CanMessageGetDataLengthConst(const CanMessage *can) {
+EXPORT size_t CanMessageGetDataLength(const CanMessage *can) {
   return can->DataLength();
 }
 
@@ -934,17 +918,7 @@ EXPORT void CanMessageSetDataLength(CanMessage *can, uint32_t dataLength) {
   can->DataLength(dataLength);
 }
 
-EXPORT size_t CanMessageGetDataBytes(CanMessage *can, uint8_t *dataList,
-                                     size_t max_length) {
-  const auto &data = can->DataBytes();
-  size_t copy_length = std::min(data.size(), max_length);
-  if (dataList && max_length > 0) {
-    std::memcpy(dataList, data.data(), copy_length);
-  }
-  return data.size();
-}
-
-EXPORT size_t CanMessageGetDataBytesConst(const CanMessage *can, uint8_t *dataList,
+EXPORT size_t CanMessageGetDataBytes(const CanMessage *can, uint8_t *dataList,
                                           size_t max_length) {
   const auto &data = can->DataBytes();
   size_t copy_length = std::min(data.size(), max_length);
@@ -966,6 +940,22 @@ EXPORT uint32_t CanMessageGetBusChannel(const CanMessage *can) {
 
 EXPORT void CanMessageSetBusChannel(CanMessage *can, uint32_t busChannel) {
   can->BusChannel(busChannel);
+}
+
+EXPORT uint64_t CanMessageGetTimestamp(const CanMessage *can) {
+  return can->Timestamp();
+}
+
+EXPORT void CanMessageSetTimestamp(CanMessage *can, uint64_t timeStamp) {
+  can->Timestamp(timeStamp);
+}
+
+EXPORT uint32_t CanMessageGetCrc(const CanMessage *can) {
+  return can->Crc();
+}
+
+EXPORT void CanMessageSetCrc(CanMessage *can, uint32_t crc) {
+  can->Crc(crc);
 }
 
 // ISourceInformation functions

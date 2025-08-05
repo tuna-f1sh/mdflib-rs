@@ -744,25 +744,23 @@ EXPORT IMetaData* ChannelConversionCreateMetaData(IChannelConversion* conversion
 // CanMessage functions
 EXPORT CanMessage* CanMessageInit();
 EXPORT void CanMessageUnInit(CanMessage* can);
-EXPORT uint32_t CanMessageGetMessageId(CanMessage* can);
-EXPORT uint32_t CanMessageGetMessageIdConst(const CanMessage* can);
+EXPORT uint32_t CanMessageGetMessageId(const CanMessage* can);
 EXPORT void CanMessageSetMessageId(CanMessage* can, uint32_t msgId);
-EXPORT uint32_t CanMessageGetCanId(CanMessage* can);
-EXPORT uint32_t CanMessageGetCanIdConst(const CanMessage* can);
-EXPORT bool CanMessageGetExtendedId(CanMessage* can);
-EXPORT bool CanMessageGetExtendedIdConst(const CanMessage* can);
+EXPORT uint32_t CanMessageGetCanId(const CanMessage* can);
+EXPORT bool CanMessageGetExtendedId(const CanMessage* can);
 EXPORT void CanMessageSetExtendedId(CanMessage* can, bool extendedId);
-EXPORT uint8_t CanMessageGetDlc(CanMessage* can);
-EXPORT uint8_t CanMessageGetDlcConst(const CanMessage* can);
+EXPORT uint8_t CanMessageGetDlc(const CanMessage* can);
 EXPORT void CanMessageSetDlc(CanMessage* can, uint8_t dlc);
-EXPORT size_t CanMessageGetDataLength(CanMessage* can);
-EXPORT size_t CanMessageGetDataLengthConst(const CanMessage* can);
+EXPORT size_t CanMessageGetDataLength(const CanMessage* can);
 EXPORT void CanMessageSetDataLength(CanMessage* can, uint32_t dataLength);
-EXPORT size_t CanMessageGetDataBytes(CanMessage* can, uint8_t* dataList, size_t max_length);
-EXPORT size_t CanMessageGetDataBytesConst(const CanMessage* can, uint8_t* dataList, size_t max_length);
+EXPORT size_t CanMessageGetDataBytes(const CanMessage* can, uint8_t* dataList, size_t max_length);
 EXPORT void CanMessageSetDataBytes(CanMessage* can, const uint8_t* dataList, size_t size);
 EXPORT uint32_t CanMessageGetBusChannel(const CanMessage* can);
 EXPORT void CanMessageSetBusChannel(CanMessage* can, uint32_t busChannel);
+EXPORT uint64_t CanMessageGetTimestamp(const CanMessage* can);
+EXPORT void CanMessageSetTimestamp(CanMessage* can, uint64_t time);
+EXPORT uint32_t CanMessageGetCrc(const CanMessage* can);
+EXPORT void CanMessageSetCrc(CanMessage* can, uint32_t crc);
 
 // IChannelObserver functions
 EXPORT IChannelObserver* CreateChannelObserver(const IDataGroup* dataGroup, const IChannelGroup* channelGroup, const IChannel* channel);
