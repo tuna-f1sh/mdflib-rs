@@ -35,10 +35,10 @@ pub use mdflib_sys::{
 
 // New MDF object modules
 pub mod attachment;
+pub mod canbusobserver;
 pub mod channelarray;
 pub mod channelconversion;
 pub mod channelobserver;
-pub mod canbusobserver;
 pub mod etag;
 pub mod event;
 pub mod filehistory;
@@ -57,10 +57,10 @@ pub use writer::{MdfWriter, MdfWriterType};
 
 // Re-export new MDF object types
 pub use attachment::{Attachment, AttachmentRef};
+pub use canbusobserver::{create_can_bus_observer, CanBusObserver, CanBusObserverRef};
 pub use channelarray::{ChannelArray, ChannelArrayRef};
 pub use channelconversion::{ChannelConversion, ChannelConversionRef};
 pub use channelobserver::{create_channel_observer, ChannelObserver, ChannelObserverRef};
-pub use canbusobserver::{create_can_bus_observer, CanBusObserver, CanBusObserverRef};
 pub use etag::{ETag, ETagRef};
 pub use event::{Event, EventRef};
 pub use filehistory::{FileHistory, FileHistoryRef};

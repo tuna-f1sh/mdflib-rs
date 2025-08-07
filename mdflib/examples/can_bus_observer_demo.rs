@@ -18,7 +18,8 @@ fn main() -> Result<()> {
     // Step 1: Create an MDF file with CAN bus data
     println!("\n1. Creating MDF file with CAN bus data...");
     {
-        let mut writer = writer::MdfWriter::new(mdflib_sys::MdfWriterType::MdfBusLogger, file_path)?;
+        let mut writer =
+            writer::MdfWriter::new(mdflib_sys::MdfWriterType::MdfBusLogger, file_path)?;
         writer.set_bus_type(MdfBusType::CAN as u16);
 
         let mut header = writer.get_header().unwrap();
@@ -61,8 +62,12 @@ fn main() -> Result<()> {
             can_message.set_timestamp((index as u64 + 1) * 1000);
 
             writer.save_can_message(&channel_group, (index as u64 + 1) * 1000, &can_message);
-            println!("  Written CAN message: ID=0x{:03X}, DLC={}, Data={:?}", 
-                    can_id, data.len(), data);
+            println!(
+                "  Written CAN message: ID=0x{:03X}, DLC={}, Data={:?}",
+                can_id,
+                data.len(),
+                data
+            );
         }
 
         writer.stop_measurement(5000);
@@ -83,15 +88,26 @@ fn main() -> Result<()> {
         // Create CanBusObserver for each CAN channel group
         for dg_index in 0..file.get_data_group_count() {
             let dg = file.get_data_group(dg_index);
-            println!("  Data Group {}: {} channel groups", dg_index, dg.get_channel_group_count());
+            println!(
+                "  Data Group {}: {} channel groups",
+                dg_index,
+                dg.get_channel_group_count()
+            );
 
             for cg_index in 0..dg.get_channel_group_count() {
                 let cg = dg.get_channel_group_by_index(cg_index).unwrap();
                 let bus_type = cg.get_bus_type();
-                
-                println!("    Channel Group '{}': Bus Type = {} ({})", 
-                        cg.get_name(), bus_type,
-                        if bus_type == BusType::Can as u8 { "CAN" } else { "Other" });
+
+                println!(
+                    "    Channel Group '{}': Bus Type = {} ({})",
+                    cg.get_name(),
+                    bus_type,
+                    if bus_type == BusType::Can as u8 {
+                        "CAN"
+                    } else {
+                        "Other"
+                    }
+                );
 
                 // Create CanBusObserver for CAN channel groups
                 if bus_type == BusType::Can as u8 {
@@ -99,11 +115,13 @@ fn main() -> Result<()> {
                         Ok(observer) => {
                             let name = observer.get_name();
                             let nof_samples = observer.get_nof_samples();
-                            println!("      Created CanBusObserver '{}' with {} samples", name, nof_samples);
+                            println!(
+                                "      Created CanBusObserver '{name}' with {nof_samples} samples"
+                            );
                             observers.push((name, observer));
-                        },
+                        }
                         Err(e) => {
-                            println!("      Failed to create CanBusObserver: {:?}", e);
+                            println!("      Failed to create CanBusObserver: {e:?}");
                         }
                     }
                 }
@@ -119,7 +137,7 @@ fn main() -> Result<()> {
             println!("    - Data needs to be read first with ReadData()");
         } else {
             for (name, observer) in &observers {
-                println!("  Processing observer '{}':", name);
+                println!("  Processing observer '{name}':");
                 let nof_samples = observer.get_nof_samples();
 
                 if nof_samples == 0 {
@@ -132,10 +150,16 @@ fn main() -> Result<()> {
                             let data = can_msg.get_data_bytes();
                             let timestamp = can_msg.get_timestamp();
 
-                            println!("    Sample {}: ID=0x{:03X}, DLC={}, Data={:02X?}, Time={}µs",
-                                    sample, can_id, dlc, &data[..dlc as usize], timestamp);
+                            println!(
+                                "    Sample {}: ID=0x{:03X}, DLC={}, Data={:02X?}, Time={}µs",
+                                sample,
+                                can_id,
+                                dlc,
+                                &data[..dlc as usize],
+                                timestamp
+                            );
                         } else {
-                            println!("    Sample {}: No CAN message", sample);
+                            println!("    Sample {sample}: No CAN message");
                         }
                     }
                 }
@@ -147,6 +171,6 @@ fn main() -> Result<()> {
     println!("  ✓ Successfully created CanBusObserver");
     println!("  ✓ Demonstrated CAN message creation and parsing");
     println!("  ✓ Showed proper resource management with RAII");
-    
+
     Ok(())
 }
