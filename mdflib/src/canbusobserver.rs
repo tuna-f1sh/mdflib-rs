@@ -3,8 +3,8 @@
 //! A CAN bus observer is used to read CAN messages from an MDF file. It provides
 //! access to CAN messages parsed from the channel data.
 
-use crate::error::Result;
 use crate::canmessage::CanMessageRef;
+use crate::error::Result;
 use mdflib_sys as ffi;
 use std::marker::PhantomData;
 
@@ -181,7 +181,7 @@ unsafe impl<'a> Sync for CanBusObserver<'a> {}
 ///
 ///     for sample in 0..nof_samples {
 ///         if let Some(can_msg) = observer.get_can_message(sample) {
-///             println!("CAN message {}: ID=0x{:X}, DLC={}", 
+///             println!("CAN message {}: ID=0x{:X}, DLC={}",
 ///                     sample, can_msg.get_can_id(), can_msg.get_dlc());
 ///         }
 ///     }

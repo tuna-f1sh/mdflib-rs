@@ -78,30 +78,28 @@ fn test_can_bus_observer_basic() {
 
         // Check if this is a CAN channel group
         let bus_type = cg.get_bus_type();
-        
+
         // Create a CAN bus observer for CAN data
         if bus_type == BusType::Can as u8 {
-            let observer = unsafe {
-                create_can_bus_observer(dg.as_ptr(), cg.as_ptr())
-            };
+            let observer = unsafe { create_can_bus_observer(dg.as_ptr(), cg.as_ptr()) };
 
             match observer {
                 Ok(observer) => {
                     let name = observer.get_name();
                     let nof_samples = observer.get_nof_samples();
 
-                    println!("Created CAN bus observer '{}' with {} samples", name, nof_samples);
+                    println!("Created CAN bus observer '{name}' with {nof_samples} samples");
 
                     // For a fresh observer without read data, we might expect 0 samples
                     // This test primarily validates that the CAN bus observer can be created successfully
-                },
+                }
                 Err(e) => {
-                    println!("Failed to create CAN bus observer: {:?}", e);
+                    println!("Failed to create CAN bus observer: {e:?}");
                     // This might be expected if the channel group doesn't contain proper CAN data
                 }
             }
         } else {
-            println!("Channel group is not a CAN bus type: {}", bus_type);
+            println!("Channel group is not a CAN bus type: {bus_type}");
         }
     }
 }
@@ -153,22 +151,22 @@ fn test_can_bus_observer_non_can_data() {
 
         // Check bus type - should not be CAN
         let bus_type = cg.get_bus_type();
-        println!("Channel group bus type: {}", bus_type);
+        println!("Channel group bus type: {bus_type}");
 
         // Try to create CAN bus observer anyway - this might fail or return an observer with 0 samples
-        let observer_result = unsafe {
-            create_can_bus_observer(dg.as_ptr(), cg.as_ptr())
-        };
+        let observer_result = unsafe { create_can_bus_observer(dg.as_ptr(), cg.as_ptr()) };
 
         match observer_result {
             Ok(observer) => {
                 let name = observer.get_name();
                 let nof_samples = observer.get_nof_samples();
-                println!("Created CAN bus observer '{}' with {} samples on non-CAN data", name, nof_samples);
+                println!(
+                    "Created CAN bus observer '{name}' with {nof_samples} samples on non-CAN data"
+                );
                 // This might be valid - the observer is created but has no CAN messages
-            },
+            }
             Err(e) => {
-                println!("Failed to create CAN bus observer on non-CAN data: {:?}", e);
+                println!("Failed to create CAN bus observer on non-CAN data: {e:?}");
                 // This is also valid - the observer creation failed for non-CAN data
             }
         }
@@ -252,17 +250,16 @@ fn test_can_bus_observer_multiple() {
 
                 // Only create CAN bus observers for CAN channel groups
                 if cg.get_bus_type() == BusType::Can as u8 {
-                    let observer_result = unsafe {
-                        create_can_bus_observer(dg.as_ptr(), cg.as_ptr())
-                    };
+                    let observer_result =
+                        unsafe { create_can_bus_observer(dg.as_ptr(), cg.as_ptr()) };
 
                     match observer_result {
                         Ok(observer) => {
                             let name = observer.get_name();
                             observers.push((name, observer));
-                        },
+                        }
                         Err(e) => {
-                            println!("Failed to create CAN bus observer: {:?}", e);
+                            println!("Failed to create CAN bus observer: {e:?}");
                         }
                     }
                 }
@@ -270,18 +267,25 @@ fn test_can_bus_observer_multiple() {
         }
 
         // Process all the observers
-        assert!(!observers.is_empty(), "Should have created some CAN bus observers");
+        assert!(
+            !observers.is_empty(),
+            "Should have created some CAN bus observers"
+        );
 
         for (name, observer) in &observers {
             let nof_samples = observer.get_nof_samples();
 
-            println!("Created CAN bus observer '{}' with {} samples", name, nof_samples);
+            println!("Created CAN bus observer '{name}' with {nof_samples} samples");
 
             // Test that the basic observer methods work
             for sample in 0..nof_samples {
                 if let Some(can_msg) = observer.get_can_message(sample) {
-                    println!("Sample {}: CAN ID=0x{:X}, DLC={}", 
-                            sample, can_msg.get_can_id(), can_msg.get_dlc());
+                    println!(
+                        "Sample {}: CAN ID=0x{:X}, DLC={}",
+                        sample,
+                        can_msg.get_can_id(),
+                        can_msg.get_dlc()
+                    );
                 }
             }
         }
