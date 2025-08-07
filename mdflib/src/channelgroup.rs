@@ -152,6 +152,11 @@ impl ChannelGroupRef {
             }
         }
     }
+
+    /// Gets the bus type of the channel group.
+    pub fn get_bus_type(&self) -> u8 {
+        unsafe { ffi::ChannelGroupGetBusType(self.inner) }
+    }
 }
 
 /// Represents a mutable reference to a channel group in an MDF file.

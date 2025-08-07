@@ -524,6 +524,7 @@ EXPORT const IMetaData* ChannelGroupGetMetaData(const IChannelGroup* group);
 EXPORT IMetaData* ChannelGroupCreateMetaData(IChannelGroup* group);
 EXPORT const ISourceInformation* ChannelGroupGetSourceInformation(const IChannelGroup* group);
 EXPORT ISourceInformation* ChannelGroupCreateSourceInformation(IChannelGroup* group);
+EXPORT uint8_t ChannelGroupGetBusType(const IChannelGroup* group);
 
 // IChannel functions
 EXPORT uint64_t ChannelGetIndex(const IChannel* channel);

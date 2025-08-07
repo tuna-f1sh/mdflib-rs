@@ -511,6 +511,10 @@ ChannelGroupCreateSourceInformation(IChannelGroup *group) {
   return group ? group->CreateSourceInformation() : nullptr;
 }
 
+EXPORT uint8_t ChannelGroupGetBusType(const IChannelGroup *group) {
+  return (uint8_t) group->GetBusType();
+}
+
 // IHeader functions
 EXPORT size_t IHeaderGetMeasurementId(const IHeader *header, char *id,
                                       size_t max_length) {
