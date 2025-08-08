@@ -98,6 +98,11 @@ impl<'a> CanMessageRef<'a> {
     pub fn get_crc(&self) -> u32 {
         unsafe { ffi::CanMessageGetCrc(self.inner) }
     }
+
+    /// Gets the type of message.
+    pub fn get_type(&self) -> u8 {
+        unsafe { ffi::CanMessageGetTypeOfMessage(self.inner) }
+    }
 }
 
 /// Represents a mutable CAN message.
@@ -165,6 +170,11 @@ impl<'a> CanMessage<'a> {
     /// Sets the CRC of the message.
     pub fn set_crc(&mut self, crc: u32) {
         unsafe { ffi::CanMessageSetCrc(self.inner, crc) }
+    }
+
+    /// Sets the type of message.
+    pub fn set_type(&mut self, msg_type: u8) {
+        unsafe { ffi::CanMessageSetTypeOfMessage(self.inner, msg_type) }
     }
 }
 

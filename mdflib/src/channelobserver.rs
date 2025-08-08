@@ -186,7 +186,7 @@ unsafe impl<'a> Sync for ChannelObserver<'a> {}
 /// let reader = reader::MdfReader::new("example.mf4")?;
 /// // ... get data_group, channel_group, and channel from file ...
 /// # let file = reader.get_file().unwrap();
-/// # let data_group = file.get_data_group(0);
+/// # let data_group = file.get_data_group(0).unwrap();
 /// # let channel_group = data_group.get_channel_group_by_index(0).unwrap();
 /// # let channel = channel_group.get_channel_by_index(0).unwrap();
 ///

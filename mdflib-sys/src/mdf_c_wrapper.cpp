@@ -328,7 +328,7 @@ EXPORT size_t MdfFileGetDataGroupCount(const MdfFile *file) {
   return groups.size();
 }
 
-EXPORT const IDataGroup *MdfFileGetDataGroupByIndex(const MdfFile *file,
+EXPORT IDataGroup *MdfFileGetDataGroupByIndex(const MdfFile *file,
                                                     size_t index) {
   DataGroupList groups;
   file->DataGroups(groups);
@@ -376,7 +376,7 @@ EXPORT IAttachment *MdfFileCreateAttachment(MdfFile *file) {
   return file ? file->CreateAttachment() : nullptr;
 }
 
-EXPORT const IDataGroup* MdfFileFindParentDataGroup(const MdfFile *file,
+EXPORT IDataGroup* MdfFileFindParentDataGroup(const MdfFile *file,
                                                     const IChannel &channel) {
   return file->FindParentDataGroup(channel);
 }
@@ -961,6 +961,15 @@ EXPORT uint32_t CanMessageGetCrc(const CanMessage *can) {
 
 EXPORT void CanMessageSetCrc(CanMessage *can, uint32_t crc) {
   can->Crc(crc);
+}
+
+EXPORT void CanMessageSetTypeOfMessage(CanMessage *can,
+                                       uint8_t typeOfMessage) {
+  can->TypeOfMessage(static_cast<MessageType>(typeOfMessage));
+}
+
+EXPORT uint8_t CanMessageGetTypeOfMessage(const CanMessage *can) {
+  return static_cast<uint8_t>(can->TypeOfMessage());
 }
 
 // ISourceInformation functions

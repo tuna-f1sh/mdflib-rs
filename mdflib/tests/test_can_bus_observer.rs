@@ -25,20 +25,9 @@ fn test_can_bus_observer_basic() {
         // Create bus log configuration
         writer.create_bus_log_configuration();
 
-        let mut data_group = writer.create_data_group().unwrap();
-        let mut channel_group = data_group.create_channel_group().unwrap();
-        channel_group.set_name("CAN1");
-
-        // Create some basic CAN channels
-        let mut id_channel = channel_group.create_channel().unwrap();
-        id_channel.set_name("CAN_ID");
-        id_channel.set_data_type(mdflib_sys::ChannelDataType::UnsignedIntegerLe as u8);
-        id_channel.set_data_bytes(4);
-
-        let mut dlc_channel = channel_group.create_channel().unwrap();
-        dlc_channel.set_name("CAN_DLC");
-        dlc_channel.set_data_type(mdflib_sys::ChannelDataType::UnsignedIntegerLe as u8);
-        dlc_channel.set_data_bytes(1);
+        let header = writer.get_header().unwrap();
+        let last_dg = header.get_last_data_group().unwrap();
+        let channel_group = last_dg.get_channel_group("_DataFrame").unwrap();
 
         writer.init_measurement();
         writer.start_measurement(0);
@@ -65,109 +54,32 @@ fn test_can_bus_observer_basic() {
         assert!(reader.read_everything_but_data().is_ok());
 
         let file = reader.get_file().unwrap();
-        let dg_count = file.get_data_group_count();
 
-        assert!(dg_count > 0, "Should have at least one data group");
-
-        let dg = file.get_data_group(0);
-        let cg_count = dg.get_channel_group_count();
-
-        assert!(cg_count > 0, "Should have at least one channel group");
-
-        let cg = dg.get_channel_group_by_index(0).unwrap();
-
-        // Check if this is a CAN channel group
-        let bus_type = cg.get_bus_type();
-
-        // Create a CAN bus observer for CAN data
-        if bus_type == BusType::Can as u8 {
-            let observer = unsafe { create_can_bus_observer(dg.as_ptr(), cg.as_ptr()) };
-
-            match observer {
-                Ok(observer) => {
+        for mut dg in file.get_data_groups() {
+            for cg in dg.get_channel_groups() {
+                // Only create CAN bus observers for CAN channel groups
+                if cg.get_bus_type() == BusType::Can as u8 {
+                    let observer =
+                        unsafe { create_can_bus_observer(dg.as_ptr(), cg.as_ptr()).unwrap() };
+                    reader.read_data(&mut dg).unwrap();
                     let name = observer.get_name();
                     let nof_samples = observer.get_nof_samples();
 
                     println!("Created CAN bus observer '{name}' with {nof_samples} samples");
 
-                    // For a fresh observer without read data, we might expect 0 samples
-                    // This test primarily validates that the CAN bus observer can be created successfully
+                    // Process the samples
+                    for sample in 0..nof_samples {
+                        if let Some(can_msg) = observer.get_can_message(sample) {
+                            println!(
+                                "Sample {}: CAN ID=0x{:X}, DLC={}, Data={:?}",
+                                sample,
+                                can_msg.get_can_id(),
+                                can_msg.get_dlc(),
+                                can_msg.get_data_bytes()
+                            );
+                        }
+                    }
                 }
-                Err(e) => {
-                    println!("Failed to create CAN bus observer: {e:?}");
-                    // This might be expected if the channel group doesn't contain proper CAN data
-                }
-            }
-        } else {
-            println!("Channel group is not a CAN bus type: {bus_type}");
-        }
-    }
-}
-
-/// Test CAN bus observer creation with different bus types
-#[test]
-fn test_can_bus_observer_non_can_data() {
-    let temp_file = NamedTempFile::new().unwrap();
-    let file_path = temp_file.path();
-
-    // Create an MDF file with regular (non-CAN) data
-    {
-        let mut writer = writer::MdfWriter::new(mdflib_sys::MdfWriterType::Mdf4Basic, file_path)
-            .expect("Failed to create MDF writer");
-
-        let mut header = writer.get_header().unwrap();
-        header.set_description("Test MDF4 file with regular data");
-
-        let mut data_group = writer.create_data_group().unwrap();
-        let mut channel_group = data_group.create_channel_group().unwrap();
-        channel_group.set_name("RegularChannelGroup");
-
-        let mut channel = channel_group.create_channel().unwrap();
-        channel.set_name("TestChannel");
-        channel.set_data_type(mdflib_sys::ChannelDataType::UnsignedIntegerLe as u8);
-        channel.set_data_bytes(4);
-
-        writer.init_measurement();
-        writer.start_measurement(0);
-
-        // Write some test samples
-        for i in 0..5 {
-            writer.save_sample(&channel_group, i * 1000);
-        }
-
-        writer.stop_measurement(5000);
-        writer.finalize_measurement();
-    }
-
-    // Try to create CAN bus observer on non-CAN data
-    {
-        let mut reader = reader::MdfReader::new(file_path).expect("Failed to create MDF reader");
-        assert!(reader.is_ok());
-        assert!(reader.read_everything_but_data().is_ok());
-
-        let file = reader.get_file().unwrap();
-        let dg = file.get_data_group(0);
-        let cg = dg.get_channel_group_by_index(0).unwrap();
-
-        // Check bus type - should not be CAN
-        let bus_type = cg.get_bus_type();
-        println!("Channel group bus type: {bus_type}");
-
-        // Try to create CAN bus observer anyway - this might fail or return an observer with 0 samples
-        let observer_result = unsafe { create_can_bus_observer(dg.as_ptr(), cg.as_ptr()) };
-
-        match observer_result {
-            Ok(observer) => {
-                let name = observer.get_name();
-                let nof_samples = observer.get_nof_samples();
-                println!(
-                    "Created CAN bus observer '{name}' with {nof_samples} samples on non-CAN data"
-                );
-                // This might be valid - the observer is created but has no CAN messages
-            }
-            Err(e) => {
-                println!("Failed to create CAN bus observer on non-CAN data: {e:?}");
-                // This is also valid - the observer creation failed for non-CAN data
             }
         }
     }
@@ -190,26 +102,14 @@ fn test_can_bus_observer_multiple() {
         header.set_description("Test MDF4 file with multiple CAN channels");
 
         writer.create_bus_log_configuration();
+        writer.create_data_group();
+        writer.create_bus_log_configuration();
 
-        // Create first CAN channel group
-        let mut data_group1 = writer.create_data_group().unwrap();
-        let mut channel_group1 = data_group1.create_channel_group().unwrap();
-        channel_group1.set_name("CAN1");
-
-        let mut id_channel1 = channel_group1.create_channel().unwrap();
-        id_channel1.set_name("CAN_ID");
-        id_channel1.set_data_type(mdflib_sys::ChannelDataType::UnsignedIntegerLe as u8);
-        id_channel1.set_data_bytes(4);
-
-        // Create second CAN channel group
-        let mut data_group2 = writer.create_data_group().unwrap();
-        let mut channel_group2 = data_group2.create_channel_group().unwrap();
-        channel_group2.set_name("CAN2");
-
-        let mut id_channel2 = channel_group2.create_channel().unwrap();
-        id_channel2.set_name("CAN_ID");
-        id_channel2.set_data_type(mdflib_sys::ChannelDataType::UnsignedIntegerLe as u8);
-        id_channel2.set_data_bytes(4);
+        let file = writer.get_file().unwrap();
+        let can1_dg = file.get_data_group(0).unwrap();
+        let can2_dg = file.get_data_group(1).unwrap();
+        let channel_group1 = can1_dg.get_channel_group("_DataFrame").unwrap();
+        let channel_group2 = can2_dg.get_channel_group("_DataFrame").unwrap();
 
         writer.init_measurement();
         writer.start_measurement(0);
@@ -243,26 +143,20 @@ fn test_can_bus_observer_multiple() {
         let mut observers = Vec::new();
 
         for dg_index in 0..file.get_data_group_count() {
-            let dg = file.get_data_group(dg_index);
+            let mut dg = file.get_data_group(dg_index).unwrap();
 
             for cg_index in 0..dg.get_channel_group_count() {
                 let cg = dg.get_channel_group_by_index(cg_index).unwrap();
 
                 // Only create CAN bus observers for CAN channel groups
                 if cg.get_bus_type() == BusType::Can as u8 {
-                    let observer_result =
-                        unsafe { create_can_bus_observer(dg.as_ptr(), cg.as_ptr()) };
-
-                    match observer_result {
-                        Ok(observer) => {
-                            let name = observer.get_name();
-                            observers.push((name, observer));
-                        }
-                        Err(e) => {
-                            println!("Failed to create CAN bus observer: {e:?}");
-                        }
-                    }
+                    let observer =
+                        unsafe { create_can_bus_observer(dg.as_ptr(), cg.as_ptr()).unwrap() };
+                    let name = observer.get_name();
+                    observers.push((name, observer));
                 }
+
+                reader.read_data(&mut dg).unwrap();
             }
         }
 
