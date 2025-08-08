@@ -52,7 +52,7 @@ fn test_channel_observer_basic() {
 
         assert!(dg_count > 0, "Should have at least one data group");
 
-        let dg = file.get_data_group(0);
+        let dg = file.get_data_group(0).unwrap();
         let cg_count = dg.get_channel_group_count();
 
         assert!(cg_count > 0, "Should have at least one channel group");
@@ -148,7 +148,7 @@ fn test_channel_observer_multiple_channels() {
         let mut observers = Vec::new();
 
         for dg_index in 0..file.get_data_group_count() {
-            let dg = file.get_data_group(dg_index);
+            let dg = file.get_data_group(dg_index).unwrap();
 
             // Note: We can't read data from DataGroupRef, only from DataGroup
             // This test demonstrates creating channel observers for the structure

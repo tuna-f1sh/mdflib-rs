@@ -11,7 +11,7 @@ use std::ops::Deref;
 use std::os::raw::c_char;
 
 use crate::attachment::{Attachment, AttachmentRef};
-use crate::{ChannelRef, DataGroup, DataGroupRef, MdfHeaderRef};
+use crate::{ChannelRef, DataGroup, MdfHeaderRef};
 
 #[derive(Debug, Clone, Copy)]
 pub struct MdfFileRef {
@@ -107,17 +107,28 @@ impl MdfFileRef {
             .collect()
     }
 
-    pub fn get_data_group(&self, index: usize) -> DataGroupRef {
-        unsafe { DataGroupRef::new(ffi::MdfFileGetDataGroupByIndex(self.inner, index)) }
+    pub fn get_data_group(&self, index: usize) -> Option<DataGroup> {
+        if index < self.get_data_group_count() {
+            unsafe {
+                let dg = ffi::MdfFileGetDataGroupByIndex(self.inner, index);
+                if dg.is_null() {
+                    None
+                } else {
+                    Some(DataGroup::new(dg))
+                }
+            }
+        } else {
+            None
+        }
     }
 
-    pub fn find_parent_data_group(&self, channel: &ChannelRef) -> Option<DataGroupRef> {
+    pub fn find_parent_data_group(&self, channel: &ChannelRef) -> Option<DataGroup> {
         unsafe {
             let dg = ffi::MdfFileFindParentDataGroup(self.inner, channel.as_ptr());
             if dg.is_null() {
                 None
             } else {
-                Some(DataGroupRef::new(dg))
+                Some(DataGroup::new(dg))
             }
         }
     }
