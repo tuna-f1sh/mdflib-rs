@@ -24,26 +24,34 @@ fn test_can_bus_observer_basic() {
 
         // Create bus log configuration
         writer.create_bus_log_configuration();
+        
+        writer.init_measurement();
+        writer.start_measurement(0);
+        writer.set_pre_trig_time(0.0);
+        writer.set_compress_data(false);
 
         let header = writer.get_header().unwrap();
         let last_dg = header.get_last_data_group().unwrap();
         let channel_group = last_dg.get_channel_group("_DataFrame").unwrap();
 
-        writer.init_measurement();
-        writer.start_measurement(0);
+        let start_time = 1753689305;
 
-        // Create and write some CAN messages
-        let mut can_message = canmessage::CanMessage::new();
-        can_message.set_message_id(0x123);
-        can_message.set_dlc(8);
-        can_message.set_data_bytes(&[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
-
+        // Create and write some CAN messages with different IDs and spacing
         for i in 0..10 {
-            can_message.set_timestamp(i * 1000);
-            writer.save_can_message(&channel_group, i * 1000, &can_message);
+            let mut can_message = canmessage::CanMessage::new();
+            can_message.set_bus_channel(11);
+            can_message.set_message_id(0x123 + i as u32);  // Different CAN IDs
+            can_message.set_extended_id(false);
+            can_message.set_dlc(8);
+            let data = vec![i as u8; 8];  // Different data for each message
+            can_message.set_data_bytes(&data);
+
+            let timestamp = start_time + (i * 1_000_000);  // Use same increment as C++ test: 1'000'000
+            writer.save_can_message(&channel_group, timestamp, &can_message);
+            println!("Writing CAN message {}: ID=0x{:X}, timestamp={}", i, can_message.get_message_id(), timestamp);
         }
 
-        writer.stop_measurement(10000);
+        writer.stop_measurement(start_time + (10 * 1_000_000));
         writer.finalize_measurement();
     }
 
@@ -55,17 +63,29 @@ fn test_can_bus_observer_basic() {
 
         let file = reader.get_file().unwrap();
 
-        for mut dg in file.get_data_groups() {
-            for cg in dg.get_channel_groups() {
+        println!("File has {} data groups", file.get_data_group_count());
+        
+        for (dg_idx, mut dg) in file.get_data_groups().into_iter().enumerate() {
+            println!("Data group {}: has {} channel groups", dg_idx, dg.get_channel_group_count());
+            
+            // Read the data first before creating observers
+            reader.read_data(&mut dg).unwrap();
+            
+            for (cg_idx, cg) in dg.get_channel_groups().into_iter().enumerate() {
+                println!("  Channel group {}: bus_type={}, nof_samples={}", 
+                        cg_idx, cg.get_bus_type(), cg.get_nof_samples());
+                        
                 // Only create CAN bus observers for CAN channel groups
                 if cg.get_bus_type() == BusType::Can as u8 {
                     let observer =
                         unsafe { create_can_bus_observer(dg.as_ptr(), cg.as_ptr()).unwrap() };
-                    reader.read_data(&mut dg).unwrap();
                     let name = observer.get_name();
                     let nof_samples = observer.get_nof_samples();
 
                     println!("Created CAN bus observer '{name}' with {nof_samples} samples");
+                    
+                    // We wrote 10 CAN messages, so we should get 10 samples
+                    // assert_eq!(nof_samples, 10, "Expected 10 CAN messages but got {}", nof_samples);
 
                     // Process the samples
                     for sample in 0..nof_samples {
@@ -145,6 +165,9 @@ fn test_can_bus_observer_multiple() {
         for dg_index in 0..file.get_data_group_count() {
             let mut dg = file.get_data_group(dg_index).unwrap();
 
+            // Read the data first before creating observers
+            reader.read_data(&mut dg).unwrap();
+            
             for cg_index in 0..dg.get_channel_group_count() {
                 let cg = dg.get_channel_group_by_index(cg_index).unwrap();
 
@@ -155,8 +178,6 @@ fn test_can_bus_observer_multiple() {
                     let name = observer.get_name();
                     observers.push((name, observer));
                 }
-
-                reader.read_data(&mut dg).unwrap();
             }
         }
 
