@@ -483,12 +483,12 @@ EXPORT void MdfFileSetMinorVersion(MdfFile* file, int minor);
 EXPORT const IHeader* MdfFileGetHeader(const MdfFile* file);
 EXPORT bool MdfFileGetIsMdf4(const MdfFile* file);
 EXPORT size_t MdfFileGetDataGroupCount(const MdfFile* file);
-EXPORT const IDataGroup* MdfFileGetDataGroupByIndex(const MdfFile* file, size_t index);
+EXPORT IDataGroup* MdfFileGetDataGroupByIndex(const MdfFile* file, size_t index);
 EXPORT IDataGroup* MdfFileCreateDataGroup(MdfFile* file);
 EXPORT size_t MdfFileGetAttachments(const MdfFile* file, const IAttachment* attachments[], size_t max_count);
 EXPORT IAttachment* MdfFileCreateAttachment(MdfFile* file);
 EXPORT size_t MdfFileGetDataGroups(const MdfFile* file, IDataGroup* dest[], size_t max_count);
-EXPORT const IDataGroup* MdfFileFindParentDataGroup(const MdfFile *file, const IChannel &channel);
+EXPORT IDataGroup* MdfFileFindParentDataGroup(const MdfFile *file, const IChannel &channel);
 EXPORT void MdfFileSetProgramId(MdfFile *file, const char *program_id);
 EXPORT size_t MdfFileGetProgramId(const MdfFile *file, char *buffer, size_t max_length);
 // EXPORT void MdfFileReadHeader(MdfFile *file);
@@ -762,6 +762,8 @@ EXPORT uint64_t CanMessageGetTimestamp(const CanMessage* can);
 EXPORT void CanMessageSetTimestamp(CanMessage* can, uint64_t time);
 EXPORT uint32_t CanMessageGetCrc(const CanMessage* can);
 EXPORT void CanMessageSetCrc(CanMessage* can, uint32_t crc);
+EXPORT uint8_t CanMessageGetTypeOfMessage(const CanMessage* can);
+EXPORT void CanMessageSetTypeOfMessage(CanMessage* can, uint8_t type);
 
 // IChannelObserver functions
 EXPORT IChannelObserver* CreateChannelObserver(const IDataGroup* dataGroup, const IChannelGroup* channelGroup, const IChannel* channel);
