@@ -65,7 +65,13 @@ fn test_can_bus_observer_basic() {
                     let name = observer.get_name();
                     let nof_samples = observer.get_nof_samples();
 
-                    println!("Created CAN bus observer '{name}' with {nof_samples} samples");
+                    if name.contains("DataFrame") {
+                        assert!(
+                            nof_samples == 10,
+                            "Observer '{}' samples {nof_samples} != 10",
+                            name
+                        );
+                    }
 
                     // Process the samples
                     for sample in 0..nof_samples {
@@ -170,6 +176,14 @@ fn test_can_bus_observer_multiple() {
             let nof_samples = observer.get_nof_samples();
 
             println!("Created CAN bus observer '{name}' with {nof_samples} samples");
+
+            if name.contains("DataFrame") {
+                assert!(
+                    nof_samples == 5,
+                    "Observer '{}' samples {nof_samples} != 5",
+                    name
+                );
+            }
 
             // Test that the basic observer methods work
             for sample in 0..nof_samples {
