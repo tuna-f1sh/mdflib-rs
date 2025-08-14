@@ -103,22 +103,19 @@ fn test_mdf4_can_bus_logger_basic() {
         );
         let channel_groups = dg.get_channel_groups();
         for cg in channel_groups {
-            let channels = cg.get_channels();
-            for channel in channels {
+            let nof_samples = cg.get_nof_samples();
+            assert!(
+                nof_samples == 5000,
+                "Expected 5000 samples in channel group, found {nof_samples}"
+            );
+
+            for channel in cg.get_channels() {
                 // Check if the channel is a CAN message channel
                 if channel.get_name().starts_with("CAN_") {
                     let observer = unsafe {
                         create_channel_observer(dg.as_ptr(), cg.as_ptr(), channel.as_ptr())
                     }
                     .expect("Failed to create channel observer");
-
-                    // Read samples from the observer
-                    let nof_samples = observer.get_nof_samples();
-                    assert!(
-                        nof_samples > 0,
-                        "No samples found for channel: {}",
-                        channel.get_name()
-                    );
 
                     // Store the observer for later use
                     sub_list.push(observer);
