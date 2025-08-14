@@ -47,7 +47,8 @@ fn test_mdf4_can_bus_logger_basic() {
     assert!(writer.create_bus_log_configuration());
 
     writer.init_measurement();
-    writer.start_measurement(0);
+    let start_time = 1753689305;
+    writer.start_measurement(start_time);
     writer.set_pre_trig_time(0.0);
     writer.set_compress_data(false);
 
@@ -58,7 +59,6 @@ fn test_mdf4_can_bus_logger_basic() {
     history.set_tool_version("0.1.0").unwrap();
     history.set_user_name("Test User").unwrap();
 
-    let start_time = 1753689305;
     let last_dg = header.get_last_data_group().unwrap();
 
     let can_data_group = last_dg.get_channel_group("CAN_DataFrame").unwrap();

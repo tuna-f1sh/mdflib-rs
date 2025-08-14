@@ -30,7 +30,8 @@ fn test_can_bus_observer_basic() {
         let channel_group = last_dg.get_channel_group("_DataFrame").unwrap();
 
         writer.init_measurement();
-        writer.start_measurement(0);
+        let start_time = 1753689305;
+        writer.start_measurement(start_time);
 
         // Create and write some CAN messages
         let mut can_message = canmessage::CanMessage::new();
@@ -39,8 +40,7 @@ fn test_can_bus_observer_basic() {
         can_message.set_data_bytes(&[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
 
         for i in 0..10 {
-            can_message.set_timestamp(i * 1000);
-            writer.save_can_message(&channel_group, i * 1000, &can_message);
+            writer.save_can_message(&channel_group, start_time + i, &can_message);
         }
 
         writer.stop_measurement(10000);
@@ -118,7 +118,8 @@ fn test_can_bus_observer_multiple() {
         let channel_group2 = can2_dg.get_channel_group("_DataFrame").unwrap();
 
         writer.init_measurement();
-        writer.start_measurement(0);
+        let start_time = 1753689305;
+        writer.start_measurement(start_time);
 
         // Create and write CAN messages to both groups
         let mut can_message = canmessage::CanMessage::new();
@@ -127,9 +128,8 @@ fn test_can_bus_observer_multiple() {
         can_message.set_data_bytes(&[0x01, 0x02, 0x03, 0x04]);
 
         for i in 0..5 {
-            can_message.set_timestamp(i * 1000);
-            writer.save_can_message(&channel_group1, i * 1000, &can_message);
-            writer.save_can_message(&channel_group2, i * 1000, &can_message);
+            writer.save_can_message(&channel_group1, start_time + i, &can_message);
+            writer.save_can_message(&channel_group2, start_time + i, &can_message);
         }
 
         writer.stop_measurement(5000);

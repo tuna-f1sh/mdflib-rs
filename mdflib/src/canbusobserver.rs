@@ -44,7 +44,7 @@ impl<'a> CanBusObserverRef<'a> {
         let len = unsafe {
             ffi::CanBusObserverGetName(
                 self.inner as *mut ffi::CanBusObserver,
-                buffer.as_mut_ptr() as *mut u8,
+                buffer.as_mut_ptr() as *mut i8,
                 buffer.len(),
             )
         };
