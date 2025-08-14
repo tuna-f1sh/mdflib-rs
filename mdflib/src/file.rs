@@ -134,7 +134,7 @@ impl MdfFileRef {
     }
 
     /// Gets the attachments of the file.
-    pub fn get_attachments(&self) -> Vec<AttachmentRef> {
+    pub fn get_attachments(&self) -> Vec<AttachmentRef<'_>> {
         const MAX_ATTACHMENTS: usize = 1000;
         let mut attachments: Vec<*const ffi::IAttachment> = vec![std::ptr::null(); MAX_ATTACHMENTS];
         let count = unsafe {
@@ -173,7 +173,7 @@ impl MdfFile {
     }
 
     /// Creates an attachment for the file.
-    pub fn create_attachment(&mut self) -> Option<Attachment> {
+    pub fn create_attachment(&mut self) -> Option<Attachment<'_>> {
         unsafe {
             let attachment = ffi::MdfFileCreateAttachment(self.inner);
             if attachment.is_null() {

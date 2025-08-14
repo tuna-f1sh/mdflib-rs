@@ -181,7 +181,7 @@ impl MdfHeaderRef {
     }
 
     /// Gets the metadata of the header.
-    pub fn get_metadata(&self) -> Option<MetaDataRef> {
+    pub fn get_metadata(&self) -> Option<MetaDataRef<'_>> {
         unsafe {
             let metadata = ffi::IHeaderGetMetaData(self.inner);
             if metadata.is_null() {
@@ -193,7 +193,7 @@ impl MdfHeaderRef {
     }
 
     /// Gets the attachments of the header.
-    pub fn get_attachments(&self) -> Vec<AttachmentRef> {
+    pub fn get_attachments(&self) -> Vec<AttachmentRef<'_>> {
         const MAX_ATTACHMENTS: usize = 1000;
         let mut attachments: Vec<*const ffi::IAttachment> = vec![std::ptr::null(); MAX_ATTACHMENTS];
         let count = unsafe {
@@ -209,7 +209,7 @@ impl MdfHeaderRef {
     }
 
     /// Gets the file histories of the header.
-    pub fn get_file_histories(&self) -> Vec<FileHistoryRef> {
+    pub fn get_file_histories(&self) -> Vec<FileHistoryRef<'_>> {
         const MAX_HISTORIES: usize = 1000;
         let mut histories: Vec<*const ffi::IFileHistory> = vec![std::ptr::null(); MAX_HISTORIES];
         let count = unsafe {
@@ -225,7 +225,7 @@ impl MdfHeaderRef {
     }
 
     /// Gets the events of the header.
-    pub fn get_events(&self) -> Vec<EventRef> {
+    pub fn get_events(&self) -> Vec<EventRef<'_>> {
         const MAX_EVENTS: usize = 1000;
         let mut events: Vec<*const ffi::IEvent> = vec![std::ptr::null(); MAX_EVENTS];
         let count = unsafe { ffi::IHeaderGetEvents(self.inner, events.as_mut_ptr(), MAX_EVENTS) };
@@ -344,7 +344,7 @@ impl MdfHeader {
     }
 
     /// Creates metadata for the header.
-    pub fn create_metadata(&mut self) -> Option<MetaData> {
+    pub fn create_metadata(&mut self) -> Option<MetaData<'_>> {
         unsafe {
             let metadata = ffi::IHeaderCreateMetaData(self.inner);
             if metadata.is_null() {
@@ -356,7 +356,7 @@ impl MdfHeader {
     }
 
     /// Creates an attachment for the header.
-    pub fn create_attachment(&mut self) -> Option<Attachment> {
+    pub fn create_attachment(&mut self) -> Option<Attachment<'_>> {
         unsafe {
             let attachment = ffi::IHeaderCreateAttachment(self.inner);
             if attachment.is_null() {
@@ -368,7 +368,7 @@ impl MdfHeader {
     }
 
     /// Creates a file history for the header.
-    pub fn create_file_history(&mut self) -> Option<FileHistory> {
+    pub fn create_file_history(&mut self) -> Option<FileHistory<'_>> {
         unsafe {
             let file_history = ffi::IHeaderCreateFileHistory(self.inner);
             if file_history.is_null() {
@@ -380,7 +380,7 @@ impl MdfHeader {
     }
 
     /// Creates an event for the header.
-    pub fn create_event(&mut self) -> Option<Event> {
+    pub fn create_event(&mut self) -> Option<Event<'_>> {
         unsafe {
             let event = ffi::IHeaderCreateEvent(self.inner);
             if event.is_null() {

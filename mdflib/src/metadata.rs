@@ -79,7 +79,7 @@ impl<'a> MetaDataRef<'a> {
     }
 
     /// Gets all properties as ETag objects.
-    pub fn get_properties(&self) -> Vec<ETag> {
+    pub fn get_properties(&self) -> Vec<ETag<'_>> {
         const MAX_PROPERTIES: usize = 1000;
         let mut properties: Vec<*mut ffi::ETag> = vec![std::ptr::null_mut(); MAX_PROPERTIES];
         let count = unsafe {
@@ -95,7 +95,7 @@ impl<'a> MetaDataRef<'a> {
     }
 
     /// Gets common properties as ETag objects.
-    pub fn get_common_properties(&self) -> Vec<ETag> {
+    pub fn get_common_properties(&self) -> Vec<ETag<'_>> {
         const MAX_PROPERTIES: usize = 1000;
         let mut properties: Vec<*mut ffi::ETag> = vec![std::ptr::null_mut(); MAX_PROPERTIES];
         let count = unsafe {

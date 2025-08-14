@@ -191,19 +191,21 @@ impl MdfWriter {
 
     /// Start measurement
     ///
-    /// Time is absolute time in nanoseconds since the epoch (1970-01-01T00:00:00Z).
+    /// Time is absolute time in nanoseconds since the epoch (1970-01-01T00:00:00Z). **Should be > 0 otherwise samples will not be saved.**
     pub fn start_measurement(&mut self, start_time: u64) {
         unsafe { MdfWriterStartMeasurement(self.inner, start_time) }
     }
 
     /// Stop measurement
     ///
-    /// Time is absolute time in nanoseconds since the epoch (1970-01-01T00:00:00Z).
+    /// Time is absolute time in nanoseconds since the epoch (1970-01-01T00:00:00Z). Should be greater than or equal to the start time.
     pub fn stop_measurement(&mut self, stop_time: u64) {
         unsafe { MdfWriterStopMeasurement(self.inner, stop_time) }
     }
 
     /// Finalize measurement
+    ///
+    /// Unloads worker queue, joins threads, and writes the final data to the file.
     pub fn finalize_measurement(&mut self) -> bool {
         unsafe { MdfWriterFinalizeMeasurement(self.inner) }
     }

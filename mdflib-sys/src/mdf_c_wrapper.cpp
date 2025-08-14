@@ -13,6 +13,7 @@
 #include <mdf/ichannelconversion.h>
 #include <mdf/ichannelgroup.h>
 #include <mdf/ichannelobserver.h>
+#include <mdf/canbusobserver.h>
 #include <mdf/idatagroup.h>
 #include <mdf/ievent.h>
 #include <mdf/ifilehistory.h>
@@ -1815,6 +1816,46 @@ EXPORT bool ChannelObserverGetValid(const IChannelObserver* observer, size_t sam
   }
   const auto& valid_list = observer->GetValidList();
   return sample < valid_list.size() && valid_list[sample];
+}
+
+// CanBusObserver functions
+EXPORT CanBusObserver* CreateCanBusObserver(const IDataGroup* dataGroup, const IChannelGroup* channelGroup) {
+  if (!dataGroup || !channelGroup) {
+    return nullptr;
+  }
+  try {
+    return new CanBusObserver(*dataGroup, *channelGroup);
+  } catch (const std::exception& e) {
+    return nullptr;
+  }
+}
+
+EXPORT void CanBusObserverUnInit(CanBusObserver* observer) {
+  delete observer;
+}
+
+EXPORT size_t CanBusObserverGetName(const CanBusObserver* observer, char* name, size_t max_length) {
+  if (!observer) {
+    return 0;
+  }
+  const std::string observer_name = observer->Name();
+  size_t copy_length = std::min(observer_name.length(), max_length - 1);
+  if (name && max_length > 0) {
+    std::memcpy(name, observer_name.c_str(), copy_length);
+    name[copy_length] = '\0';
+  }
+  return observer_name.length();
+}
+
+EXPORT size_t CanBusObserverGetNofSamples(const CanBusObserver* observer) {
+  return observer ? observer->NofSamples() : 0;
+}
+
+EXPORT const CanMessage* CanBusObserverGetCanMessage(CanBusObserver* observer, size_t sample) {
+  if (!observer) {
+    return nullptr;
+  }
+  return observer->GetCanMessage(sample);
 }
 
 } // extern "C"
