@@ -93,7 +93,7 @@ impl ChannelGroupRef {
     }
 
     /// Gets a channel by its index.
-    pub fn get_channel_by_index(&self, index: usize) -> Option<ChannelRef> {
+    pub fn get_channel_by_index(&self, index: usize) -> Option<ChannelRef<'_>> {
         unsafe {
             let ch = ffi::ChannelGroupGetChannelByIndex(self.inner, index);
             if ch.is_null() {
@@ -110,7 +110,7 @@ impl ChannelGroupRef {
     /// Example if the search name is '.DataLength', the signal with the name
     /// 'CAN_DataFrame.DataLength' will be returned the name instead of the
     /// full name
-    pub fn get_channel(&self, name: &str) -> Option<ChannelRef> {
+    pub fn get_channel(&self, name: &str) -> Option<ChannelRef<'_>> {
         let c_name = CString::new(name).unwrap();
         unsafe {
             let ch = ffi::ChannelGroupGetChannelByName(self.inner, c_name.as_ptr());
@@ -122,7 +122,7 @@ impl ChannelGroupRef {
         }
     }
 
-    pub fn get_channels(&self) -> Vec<ChannelRef> {
+    pub fn get_channels(&self) -> Vec<ChannelRef<'_>> {
         let count = self.get_channel_count();
         (0..count)
             .filter_map(|i| self.get_channel_by_index(i))
@@ -130,7 +130,7 @@ impl ChannelGroupRef {
     }
 
     /// Gets the metadata of the channel group.
-    pub fn get_metadata(&self) -> Option<MetaDataRef> {
+    pub fn get_metadata(&self) -> Option<MetaDataRef<'_>> {
         unsafe {
             let metadata = ffi::ChannelGroupGetMetaData(self.inner);
             if metadata.is_null() {
@@ -142,7 +142,7 @@ impl ChannelGroupRef {
     }
 
     /// Gets the source information of the channel group.
-    pub fn get_source_information(&self) -> Option<SourceInformationRef> {
+    pub fn get_source_information(&self) -> Option<SourceInformationRef<'_>> {
         unsafe {
             let source_info = ffi::ChannelGroupGetSourceInformation(self.inner);
             if source_info.is_null() {
@@ -198,7 +198,7 @@ impl ChannelGroup {
     }
 
     /// Creates a new channel in the channel group.
-    pub fn create_channel(&mut self) -> Option<Channel> {
+    pub fn create_channel(&mut self) -> Option<Channel<'_>> {
         unsafe {
             let ch = ffi::ChannelGroupCreateChannel(self.inner);
             if ch.is_null() {
@@ -210,7 +210,7 @@ impl ChannelGroup {
     }
 
     /// Creates metadata for the channel group.
-    pub fn create_metadata(&mut self) -> Option<MetaData> {
+    pub fn create_metadata(&mut self) -> Option<MetaData<'_>> {
         unsafe {
             let metadata = ffi::ChannelGroupCreateMetaData(self.inner);
             if metadata.is_null() {
@@ -222,7 +222,7 @@ impl ChannelGroup {
     }
 
     /// Creates source information for the channel group.
-    pub fn create_source_information(&mut self) -> Option<SourceInformation> {
+    pub fn create_source_information(&mut self) -> Option<SourceInformation<'_>> {
         unsafe {
             let source_info = ffi::ChannelGroupCreateSourceInformation(self.inner);
             if source_info.is_null() {

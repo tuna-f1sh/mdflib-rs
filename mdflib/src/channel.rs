@@ -131,7 +131,7 @@ impl<'a> ChannelRef<'a> {
     }
 
     /// Gets the metadata of the channel.
-    pub fn get_metadata(&self) -> Option<MetaDataRef> {
+    pub fn get_metadata(&self) -> Option<MetaDataRef<'_>> {
         unsafe {
             let metadata = ffi::ChannelGetMetaData(self.inner);
             if metadata.is_null() {
@@ -143,7 +143,7 @@ impl<'a> ChannelRef<'a> {
     }
 
     /// Gets the source information of the channel.
-    pub fn get_source_information(&self) -> Option<SourceInformationRef> {
+    pub fn get_source_information(&self) -> Option<SourceInformationRef<'_>> {
         unsafe {
             let source_info = ffi::ChannelGetSourceInformation(self.inner);
             if source_info.is_null() {
@@ -155,7 +155,7 @@ impl<'a> ChannelRef<'a> {
     }
 
     /// Gets the channel conversion of the channel.
-    pub fn get_channel_conversion(&self) -> Option<ChannelConversionRef> {
+    pub fn get_channel_conversion(&self) -> Option<ChannelConversionRef<'_>> {
         unsafe {
             let conversion = ffi::ChannelGetChannelConversion(self.inner);
             if conversion.is_null() {
@@ -167,7 +167,7 @@ impl<'a> ChannelRef<'a> {
     }
 
     /// Gets the channel array of the channel.
-    pub fn get_channel_array(&self) -> Option<ChannelArrayRef> {
+    pub fn get_channel_array(&self) -> Option<ChannelArrayRef<'_>> {
         unsafe {
             let array = ffi::ChannelGetChannelArray(self.inner);
             if array.is_null() {
@@ -255,7 +255,7 @@ impl<'a> Channel<'a> {
     }
 
     /// Creates metadata for the channel.
-    pub fn create_metadata(&mut self) -> Option<MetaData> {
+    pub fn create_metadata(&mut self) -> Option<MetaData<'_>> {
         unsafe {
             let metadata = ffi::ChannelCreateMetaData(self.inner);
             if metadata.is_null() {
@@ -267,7 +267,7 @@ impl<'a> Channel<'a> {
     }
 
     /// Creates source information for the channel.
-    pub fn create_source_information(&mut self) -> Option<SourceInformation> {
+    pub fn create_source_information(&mut self) -> Option<SourceInformation<'_>> {
         unsafe {
             let source_info = ffi::ChannelCreateSourceInformation(self.inner);
             if source_info.is_null() {
@@ -279,7 +279,7 @@ impl<'a> Channel<'a> {
     }
 
     /// Creates channel conversion for the channel.
-    pub fn create_channel_conversion(&mut self) -> Option<ChannelConversion> {
+    pub fn create_channel_conversion(&mut self) -> Option<ChannelConversion<'_>> {
         unsafe {
             let conversion = ffi::ChannelCreateChannelConversion(self.inner);
             if conversion.is_null() {
@@ -291,7 +291,7 @@ impl<'a> Channel<'a> {
     }
 
     /// Creates channel array for the channel.
-    pub fn create_channel_array(&mut self) -> Option<ChannelArray> {
+    pub fn create_channel_array(&mut self) -> Option<ChannelArray<'_>> {
         unsafe {
             let array = ffi::ChannelCreateChannelArray(self.inner);
             if array.is_null() {
