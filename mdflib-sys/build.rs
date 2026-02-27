@@ -208,6 +208,18 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
         if Path::new("/usr/include/expat.h").exists() {
             cmake_config.arg("-DEXPAT_ROOT=/usr");
         }
+    } else if cfg!(target_os = "linux") {
+        // Arch Linux typically has zlib and expat in /usr/include and /usr/lib, so we can hint CMake to look there
+        if Path::new("/usr/include/zlib.h").exists() {
+            cmake_config.arg("-DZLIB_ROOT=/usr");
+        }
+        if Path::new("/usr/include/expat.h").exists() {
+            cmake_config.arg("-DEXPAT_ROOT=/usr");
+        }
+        if Path::new("/usr/lib").exists() {
+            cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.so");
+            cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.so");
+        }
     }
 }
 
