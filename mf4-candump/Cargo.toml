@@ -13,7 +13,7 @@ name = "mf4-candump"
 path = "src/main.rs"
 
 [dependencies]
-mdflib = { path = "../mdflib", version = "0.1.0" }
+mdflib = { path = "../mdflib", version = "0.2.0" }
 socketcan = { git = "https://github.com/tuna-f1sh/socketcan-rs", branch = "ts" }
 clap = { version = "4.0", features = ["derive"] }
 log = "0.4"

@@ -759,8 +759,8 @@ EXPORT size_t CanMessageGetDataBytes(const CanMessage* can, uint8_t* dataList, s
 EXPORT void CanMessageSetDataBytes(CanMessage* can, const uint8_t* dataList, size_t size);
 EXPORT uint32_t CanMessageGetBusChannel(const CanMessage* can);
 EXPORT void CanMessageSetBusChannel(CanMessage* can, uint32_t busChannel);
-EXPORT uint64_t CanMessageGetTimestamp(const CanMessage* can);
-EXPORT void CanMessageSetTimestamp(CanMessage* can, uint64_t time);
+EXPORT double CanMessageGetTimestamp(const CanMessage* can);
+EXPORT void CanMessageSetTimestamp(CanMessage* can, double time);
 EXPORT uint32_t CanMessageGetCrc(const CanMessage* can);
 EXPORT void CanMessageSetCrc(CanMessage* can, uint32_t crc);
 EXPORT uint8_t CanMessageGetTypeOfMessage(const CanMessage* can);

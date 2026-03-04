@@ -89,8 +89,10 @@ impl<'a> CanMessageRef<'a> {
         unsafe { ffi::CanMessageGetBusChannel(self.inner) }
     }
 
-    /// Gets the timestamp of the message.
-    pub fn get_timestamp(&self) -> u64 {
+    /// Gets the relative timestamp of the message.
+    ///
+    /// The **timestamp is relative** in seconds to the start of measurement.
+    pub fn get_timestamp(&self) -> f64 {
         unsafe { ffi::CanMessageGetTimestamp(self.inner) }
     }
 
@@ -163,7 +165,9 @@ impl<'a> CanMessage<'a> {
     }
 
     /// Sets the timestamp of the message.
-    pub fn set_timestamp(&mut self, timestamp: u64) {
+    ///
+    /// The **timestamp is relative** in seconds to the start of measurement.
+    pub fn set_timestamp(&mut self, timestamp: f64) {
         unsafe { ffi::CanMessageSetTimestamp(self.inner, timestamp) }
     }
 

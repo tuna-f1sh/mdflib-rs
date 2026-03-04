@@ -947,11 +947,11 @@ EXPORT void CanMessageSetBusChannel(CanMessage *can, uint32_t busChannel) {
   can->BusChannel(busChannel);
 }
 
-EXPORT uint64_t CanMessageGetTimestamp(const CanMessage *can) {
+EXPORT double CanMessageGetTimestamp(const CanMessage *can) {
   return can->Timestamp();
 }
 
-EXPORT void CanMessageSetTimestamp(CanMessage *can, uint64_t timeStamp) {
+EXPORT void CanMessageSetTimestamp(CanMessage *can, double timeStamp) {
   can->Timestamp(timeStamp);
 }
 
