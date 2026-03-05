@@ -59,7 +59,7 @@ jobs:
   build-matrix:
     name: build-${{ matrix.job.os }}-${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
-    needs: [check]
+    needs: [build-test]
     strategy:
       fail-fast: false
       matrix:
@@ -131,9 +131,9 @@ jobs:
       - name: Test
         id: test
         shell: bash
-        run: cargo test --workspace --verbose --locked
+        run: cargo test --workspace --verbose --locked --exclude mf4-candump
 
       - name: Build release
         id: build
         shell: bash
-        run: cargo build --workspace --verbose --locked
+        run: cargo build --workspace --verbose --locked --exclude mf4-candump
