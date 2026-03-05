@@ -59,7 +59,7 @@ jobs:
   build-matrix:
     name: build-${{ matrix.job.os }}-${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
-    needs: [build-test]
+    needs: [check]
     strategy:
       fail-fast: false
       matrix:
@@ -127,6 +127,10 @@ jobs:
           echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> $GITHUB_ENV
           echo "CXX_x86_64_unknown_linux_musl=g++" >> $GITHUB_ENV
           echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> $GITHUB_ENV
+
+      - name: Add MinGW to PATH
+        if: contains(matrix.job.target, '-windows-gnu')
+        run: echo "C:\tools\mingw64\bin" >> $GITHUB_PATH
 
       - name: Test
         id: test
