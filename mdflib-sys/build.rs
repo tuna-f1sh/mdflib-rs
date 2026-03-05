@@ -64,14 +64,21 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         .arg("-DCMAKE_CXX_STANDARD=17");
 
     // Platform-specific CMake settings
-    if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
-        cmake_config.arg("-G").arg("Visual Studio 16 2019");
-        if cfg!(target_arch = "x86_64") {
-            cmake_config.arg("-A").arg("x64");
-        } else if cfg!(target_arch = "x86") {
-            cmake_config.arg("-A").arg("Win32");
+    if cfg!(target_os = "windows") {
+        if cfg!(target_env = "msvc") {
+            // MSVC target uses Visual Studio generator
+            cmake_config.arg("-G").arg("Visual Studio 16 2019");
+            if cfg!(target_arch = "x86_64") {
+                cmake_config.arg("-A").arg("x64");
+            } else if cfg!(target_arch = "x86") {
+                cmake_config.arg("-A").arg("Win32");
+            }
+        } else {
+            // GNU target (MinGW) uses Unix Makefiles or MinGW Makefiles
+            cmake_config.arg("-G").arg("MinGW Makefiles");
         }
     } else {
+        // Unix systems use Unix Makefiles
         cmake_config.arg("-G").arg("Unix Makefiles");
     }
 
