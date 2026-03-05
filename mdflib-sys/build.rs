@@ -147,8 +147,17 @@ fn setup_dependency(name: &str, fallback_name: &str) {
     println!("cargo:rerun-if-env-changed={upper_name}_LIBRARY");
     println!("cargo:rerun-if-env-changed={upper_name}_INCLUDE_DIR");
 
+    // Determine if we should use static linking (for musl targets)
+    let target = env::var("TARGET").unwrap_or_default();
+    let is_musl = target.contains("musl");
+    let link_type = if is_musl { "static" } else { "dylib" };
+
     // Try pkg-config first
-    if pkg_config::probe_library(name).is_ok() {
+    let mut pkg_config = pkg_config::Config::new();
+    if is_musl {
+        pkg_config.statik(true);
+    }
+    if pkg_config.probe(name).is_ok() {
         println!("Found {name} via pkg-config");
         return;
     }
@@ -163,16 +172,36 @@ fn setup_dependency(name: &str, fallback_name: &str) {
         if let Some(lib_name) = lib_path.file_stem() {
             let lib_name_str = lib_name.to_string_lossy();
             let clean_name = lib_name_str.strip_prefix("lib").unwrap_or(&lib_name_str);
-            println!("cargo:rustc-link-lib={clean_name}");
+            println!("cargo:rustc-link-lib={link_type}={clean_name}");
         }
         return;
+    }
+
+    // For musl, try to find static libraries in standard locations
+    if is_musl {
+        let static_lib_name = format!("lib{}.a", fallback_name);
+        let search_paths = vec![
+            PathBuf::from("/usr/lib/x86_64-linux-musl"),
+            PathBuf::from("/usr/lib"),
+            PathBuf::from("/usr/local/lib"),
+        ];
+
+        for search_path in search_paths {
+            let lib_path = search_path.join(&static_lib_name);
+            if lib_path.exists() {
+                println!("cargo:rustc-link-search=native={}", search_path.display());
+                println!("cargo:rustc-link-lib=static={fallback_name}");
+                println!("Found {name} static library at {}", lib_path.display());
+                return;
+            }
+        }
     }
 
     // Finally, fallback to default system linking
     println!(
         "cargo:warning={name} not found via pkg-config or environment variables, using system defaults"
     );
-    println!("cargo:rustc-link-lib={fallback_name}");
+    println!("cargo:rustc-link-lib={link_type}={fallback_name}");
 }
 
 fn add_dependency_hints(cmake_config: &mut Command) {

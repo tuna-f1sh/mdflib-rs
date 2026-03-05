@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: main
   pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   check:
@@ -13,15 +13,14 @@ jobs:
       CARGO_TERM_COLOR: always
     runs-on: ubuntu-latest
     steps:
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           submodules: recursive
+
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        id: format
+        shell: bash
+        run: cargo fmt -- --check
 
       - name: Run clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
@@ -33,10 +32,10 @@ jobs:
       CARGO_TERM_COLOR: always
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           submodules: recursive
-      - uses: actions/cache@v4
+      - uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
         with:
           path: |
             ~/.cargo/registry/index/
@@ -45,12 +44,96 @@ jobs:
             ~/.cargo/bin/cargo-deb
             target/
           key: cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Build
-        run: cargo build --workspace --all-features --verbose
+      - name: Rustup update and version
+        shell: bash
+        run: |
+          rustup update
+          rustup --version
 
       - name: Run tests
-        run: cargo test --workspace --all-features --verbose
+        run: cargo test --workspace --all-features --verbose --locked
+
+      - name: Build
+        run: cargo build --workspace --verbose --locked
+
+  build-matrix:
+    name: build-${{ matrix.job.os }}-${{ matrix.job.target }}
+    runs-on: ${{ matrix.job.os }}
+    needs: [check]
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          # default features for all targets
+          - { os: windows-latest, target: x86_64-pc-windows-gnu, feature-flags: ""  }
+          - { os: macos-latest, target: aarch64-apple-darwin, feature-flags: ""  }
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+        with:
+          submodules: recursive
+      - uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.cargo/bin/cargo-deb
+            target/
+          key: ${{ matrix.job.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Rustup update and version
+        shell: bash
+        run: |
+          rustup update
+          rustup --version
+
+      - name: Install target and dependencies
+        shell: bash
+        run: |
+          case ${{ matrix.job.target }} in
+            *-apple-darwin)
+              brew install cmake expat zlib
+              rustup target add ${{ matrix.job.target }}
+              ;;
+            *-musl)
+              sudo apt-get update
+              sudo apt-get -y install musl-tools musl-dev
+              # Install cmake and build essentials
+              sudo apt-get -y install cmake build-essential
+              # For musl, we need to build static libraries or use existing .a files
+              # The -dev packages provide both .so and .a files
+              sudo apt-get -y install libexpat1-dev zlib1g-dev
+              # Create symlinks in musl lib directory for static libraries
+              sudo mkdir -p /usr/lib/x86_64-linux-musl
+              sudo ln -sf /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-musl/libz.a || true
+              sudo ln -sf /usr/lib/x86_64-linux-gnu/libexpat.a /usr/lib/x86_64-linux-musl/libexpat.a || true
+              rustup target add ${{ matrix.job.target }}
+              ;;
+            *-windows-gnu)
+              choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+              choco install mingw -y
+              choco install make -y
+              rustup target add ${{ matrix.job.target }}
+              ;;
+            *)
+              rustup target add ${{ matrix.job.target }}
+              ;;
+          esac
+
+      - name: Configure musl C++ compiler
+        if: contains(matrix.job.target, 'musl')
+        shell: bash
+        run: |
+          echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> $GITHUB_ENV
+          echo "CXX_x86_64_unknown_linux_musl=g++" >> $GITHUB_ENV
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> $GITHUB_ENV
+
+      - name: Test
+        id: test
+        shell: bash
+        run: cargo test --workspace --verbose --locked
+
+      - name: Build release
+        id: build
+        shell: bash
+        run: cargo build --workspace --verbose --locked
