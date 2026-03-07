@@ -112,8 +112,9 @@ jobs:
               ;;
             *-windows-msvc)
               # Use GitHub Actions' pre-installed vcpkg
+              # VCPKG_INSTALLATION_ROOT is set by GitHub Actions
               echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
-              vcpkg install zlib:x64-windows-static expat:x64-windows-static
+              "$VCPKG_INSTALLATION_ROOT/vcpkg" install zlib:x64-windows-static expat:x64-windows-static
               rustup target add ${{ matrix.job.target }}
               ;;
             *-windows-gnu)
@@ -122,7 +123,7 @@ jobs:
               choco install make -y
               # Install dependencies using vcpkg for MinGW
               echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
-              vcpkg install zlib:x64-mingw-static expat:x64-mingw-static
+              "$VCPKG_INSTALLATION_ROOT/vcpkg" install zlib:x64-mingw-static expat:x64-mingw-static
               rustup target add ${{ matrix.job.target }}
               ;;
             *)

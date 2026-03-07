@@ -239,24 +239,39 @@ fn setup_dependency(name: &str, fallback_name: &str) {
     println!("cargo:rerun-if-env-changed={upper_name}_LIBRARY");
     println!("cargo:rerun-if-env-changed={upper_name}_INCLUDE_DIR");
 
-    // Determine if we should use static linking (for musl targets)
     let target = env::var("TARGET").unwrap_or_default();
     let is_musl = target.contains("musl");
-    let link_type = if is_musl { "static" } else { "dylib" };
+    let is_windows = target.contains("windows");
+    
+    // Determine link type based on target
+    let link_type = if is_musl || (is_windows && target.contains("static")) {
+        "static"
+    } else if is_windows {
+        // On Windows, vcpkg provides static libraries with -static triplets
+        if env::var("VCPKG_ROOT").is_ok() {
+            "static"
+        } else {
+            "dylib"
+        }
+    } else {
+        "dylib"
+    };
 
-    // Try pkg-config first
-    let mut pkg_config = pkg_config::Config::new();
-    if is_musl {
-        pkg_config.statik(true);
-    }
-    if pkg_config.probe(name).is_ok() {
-        println!("Found {name} via pkg-config");
-        return;
+    // Try pkg-config first (works on Linux/macOS)
+    if !is_windows {
+        let mut pkg_config = pkg_config::Config::new();
+        if is_musl {
+            pkg_config.statik(true);
+        }
+        if pkg_config.probe(name).is_ok() {
+            println!("cargo:warning=Found {name} via pkg-config");
+            return;
+        }
     }
 
-    // Then try environment variables
+    // Try environment variables
     if let Ok(lib_path_str) = env::var(format!("{upper_name}_LIBRARY")) {
-        println!("Found {name} via {upper_name}_LIBRARY environment variable");
+        println!("cargo:warning=Found {name} via {upper_name}_LIBRARY environment variable");
         let lib_path = PathBuf::from(&lib_path_str);
         if let Some(lib_dir) = lib_path.parent() {
             println!("cargo:rustc-link-search=native={}", lib_dir.display());
@@ -267,6 +282,43 @@ fn setup_dependency(name: &str, fallback_name: &str) {
             println!("cargo:rustc-link-lib={link_type}={clean_name}");
         }
         return;
+    }
+
+    // Try vcpkg on Windows
+    if is_windows {
+        if let Ok(vcpkg_root) = env::var("VCPKG_ROOT") {
+            let vcpkg_path = PathBuf::from(&vcpkg_root);
+            let triplet = if target.contains("msvc") {
+                if target.contains("x86_64") {
+                    "x64-windows-static"
+                } else {
+                    "x86-windows-static"
+                }
+            } else {
+                // MinGW
+                if target.contains("x86_64") {
+                    "x64-mingw-static"
+                } else {
+                    "x86-mingw-static"
+                }
+            };
+            
+            let vcpkg_lib_dir = vcpkg_path.join("installed").join(triplet).join("lib");
+            if vcpkg_lib_dir.exists() {
+                println!("cargo:rustc-link-search=native={}", vcpkg_lib_dir.display());
+                
+                // Determine the actual library name in vcpkg
+                let lib_name = if name == "zlib" {
+                    if target.contains("msvc") { "zlib" } else { "z" }
+                } else {
+                    fallback_name
+                };
+                
+                println!("cargo:rustc-link-lib=static={}", lib_name);
+                println!("cargo:warning=Found {name} via vcpkg at {}", vcpkg_lib_dir.display());
+                return;
+            }
+        }
     }
 
     // For musl, try to find static libraries in standard locations
@@ -283,7 +335,7 @@ fn setup_dependency(name: &str, fallback_name: &str) {
             if lib_path.exists() {
                 println!("cargo:rustc-link-search=native={}", search_path.display());
                 println!("cargo:rustc-link-lib=static={fallback_name}");
-                println!("Found {name} static library at {}", lib_path.display());
+                println!("cargo:warning=Found {name} static library at {}", lib_path.display());
                 return;
             }
         }
