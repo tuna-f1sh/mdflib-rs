@@ -438,28 +438,70 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
 
 fn setup_bundled_linking(install_dir: &Path) {
     let target = env::var("TARGET").unwrap_or_default();
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let build_dir = out_dir.join("build");
     
-    // Add library search paths
+    // Collect all possible library paths
+    let mut lib_search_paths = Vec::new();
+    
+    // Standard lib directory
     let lib_dir = install_dir.join("lib");
     if lib_dir.exists() {
-        println!("cargo:rustc-link-search=native={}", lib_dir.display());
-    }
-    if install_dir.join("lib64").exists() {
-        println!(
-            "cargo:rustc-link-search=native={}",
-            install_dir.join("lib64").display()
-        );
+        lib_search_paths.push(lib_dir.clone());
     }
     
-    // For MSVC, libraries might be in Release or Debug subdirectories
+    // lib64 variant
+    if install_dir.join("lib64").exists() {
+        lib_search_paths.push(install_dir.join("lib64"));
+    }
+    
+    // For MSVC, check multiple possible locations
     if target.contains("msvc") {
+        // Install directory subdirectories
         let lib_release = lib_dir.join("Release");
         let lib_debug = lib_dir.join("Debug");
         if lib_release.exists() {
-            println!("cargo:rustc-link-search=native={}", lib_release.display());
+            lib_search_paths.push(lib_release);
         }
         if lib_debug.exists() {
-            println!("cargo:rustc-link-search=native={}", lib_debug.display());
+            lib_search_paths.push(lib_debug);
+        }
+        
+        // Build directory (where MSVC actually puts the files)
+        let build_mdflib_release = build_dir.join("mdflib").join("Release");
+        let build_mdflib_debug = build_dir.join("mdflib").join("Debug");
+        if build_mdflib_release.exists() {
+            lib_search_paths.push(build_mdflib_release);
+        }
+        if build_mdflib_debug.exists() {
+            lib_search_paths.push(build_mdflib_debug);
+        }
+        
+        // Also try build/lib/Release for older CMake versions
+        let build_lib_release = build_dir.join("lib").join("Release");
+        let build_lib_debug = build_dir.join("lib").join("Debug");
+        if build_lib_release.exists() {
+            lib_search_paths.push(build_lib_release);
+        }
+        if build_lib_debug.exists() {
+            lib_search_paths.push(build_lib_debug);
+        }
+    }
+    
+    // Add all search paths and emit warnings for debugging
+    for path in &lib_search_paths {
+        println!("cargo:rustc-link-search=native={}", path.display());
+        
+        // List what's actually in this directory for debugging
+        if let Ok(entries) = std::fs::read_dir(path) {
+            let files: Vec<String> = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().map_or(false, |ext| ext == "lib" || ext == "a"))
+                .map(|e| e.file_name().to_string_lossy().to_string())
+                .collect();
+            if !files.is_empty() {
+                println!("cargo:warning=Libraries in {}: {}", path.display(), files.join(", "));
+            }
         }
     }
 
