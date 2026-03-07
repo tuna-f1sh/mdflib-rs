@@ -65,6 +65,7 @@ jobs:
       matrix:
         job:
           # default features for all targets
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, feature-flags: ""  }
           - { os: windows-latest, target: x86_64-pc-windows-gnu, feature-flags: ""  }
           - { os: macos-latest, target: aarch64-apple-darwin, feature-flags: ""  }
     steps:
@@ -109,16 +110,19 @@ jobs:
               sudo ln -sf /usr/lib/x86_64-linux-gnu/libexpat.a /usr/lib/x86_64-linux-musl/libexpat.a || true
               rustup target add ${{ matrix.job.target }}
               ;;
+            *-windows-msvc)
+              # Use GitHub Actions' pre-installed vcpkg
+              echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+              vcpkg install zlib:x64-windows-static expat:x64-windows-static
+              rustup target add ${{ matrix.job.target }}
+              ;;
             *-windows-gnu)
               choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
               choco install mingw -y
               choco install make -y
               # Install dependencies using vcpkg for MinGW
-              git clone https://github.com/microsoft/vcpkg.git C:/vcpkg || true
-              cd C:/vcpkg
-              ./bootstrap-vcpkg.bat
-              ./vcpkg install zlib:x64-mingw-static expat:x64-mingw-static
-              echo "VCPKG_ROOT=C:/vcpkg" >> $GITHUB_ENV
+              echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+              vcpkg install zlib:x64-mingw-static expat:x64-mingw-static
               rustup target add ${{ matrix.job.target }}
               ;;
             *)
@@ -141,9 +145,9 @@ jobs:
       - name: Test
         id: test
         shell: bash
-        run: cargo test --workspace --verbose --locked --exclude mf4-candump
+        run: cargo test --workspace --verbose --locked --exclude mf4-candump --target ${{ matrix.job.target }}
 
       - name: Build release
         id: build
         shell: bash
-        run: cargo build --workspace --verbose --locked --exclude mf4-candump
+        run: cargo build --workspace --verbose --locked --exclude mf4-candump --target ${{ matrix.job.target }}

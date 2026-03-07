@@ -311,23 +311,40 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
         // For Windows with vcpkg, try to find the dependencies
         if let Ok(vcpkg_root) = env::var("VCPKG_ROOT") {
             let vcpkg_path = PathBuf::from(&vcpkg_root);
-            let triplet = if target.contains("x86_64") {
-                "x64-mingw-static"
+            let triplet = if target.contains("msvc") {
+                if target.contains("x86_64") {
+                    "x64-windows-static"
+                } else {
+                    "x86-windows-static"
+                }
             } else {
-                "x86-mingw-static"
+                // MinGW
+                if target.contains("x86_64") {
+                    "x64-mingw-static"
+                } else {
+                    "x86-mingw-static"
+                }
             };
             
             let vcpkg_installed = vcpkg_path.join("installed").join(triplet);
             if vcpkg_installed.exists() {
                 cmake_config.arg(format!("-DCMAKE_PREFIX_PATH={}", vcpkg_installed.display()));
-                cmake_config.arg(format!("-DCMAKE_TOOLCHAIN_FILE={}", 
-                    vcpkg_path.join("scripts").join("buildsystems").join("vcpkg.cmake").display()));
+            }
+            
+            // Always set the toolchain file for vcpkg
+            let toolchain_file = vcpkg_path.join("scripts").join("buildsystems").join("vcpkg.cmake");
+            if toolchain_file.exists() {
+                cmake_config.arg(format!("-DCMAKE_TOOLCHAIN_FILE={}", toolchain_file.display()));
+                cmake_config.arg(format!("-DVCPKG_TARGET_TRIPLET={}", triplet));
             }
         }
     }
 }
 
 fn setup_bundled_linking(install_dir: &Path) {
+    let target = env::var("TARGET").unwrap_or_default();
+    
+    // Add library search paths
     let lib_dir = install_dir.join("lib");
     if lib_dir.exists() {
         println!("cargo:rustc-link-search=native={}", lib_dir.display());
@@ -337,6 +354,18 @@ fn setup_bundled_linking(install_dir: &Path) {
             "cargo:rustc-link-search=native={}",
             install_dir.join("lib64").display()
         );
+    }
+    
+    // For MSVC, libraries might be in Release or Debug subdirectories
+    if target.contains("msvc") {
+        let lib_release = lib_dir.join("Release");
+        let lib_debug = lib_dir.join("Debug");
+        if lib_release.exists() {
+            println!("cargo:rustc-link-search=native={}", lib_release.display());
+        }
+        if lib_debug.exists() {
+            println!("cargo:rustc-link-search=native={}", lib_debug.display());
+        }
     }
 
     // Link the static libraries in the correct order
