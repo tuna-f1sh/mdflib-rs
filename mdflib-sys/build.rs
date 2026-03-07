@@ -29,6 +29,43 @@ fn main() {
     );
 }
 
+fn apply_mingw_patches(bundled_dir: &Path) {
+    use std::fs;
+    
+    // Patch blockproperty.h to add missing #include <cstdint>
+    // This issue was fixed in upstream commit 3c49205, but we keep this patch
+    // for backwards compatibility with older submodule versions
+    let blockproperty_h = bundled_dir.join("mdflib/src/blockproperty.h");
+    if blockproperty_h.exists() {
+        let content = fs::read_to_string(&blockproperty_h)
+            .expect("Failed to read blockproperty.h");
+        
+        // Only patch if not already fixed
+        if !content.contains("#include <cstdint>") && content.contains("int64_t") {
+            let lines: Vec<&str> = content.lines().collect();
+            let mut new_content = String::new();
+            let mut patched = false;
+            
+            for (i, line) in lines.iter().enumerate() {
+                new_content.push_str(line);
+                new_content.push('\n');
+                
+                // Add #include <cstdint> after #include <string>
+                if !patched && line.contains("#include <string>") && i + 1 < lines.len() {
+                    new_content.push_str("#include <cstdint>\n");
+                    patched = true;
+                }
+            }
+            
+            if patched {
+                fs::write(&blockproperty_h, new_content)
+                    .expect("Failed to write patched blockproperty.h");
+                println!("cargo:warning=Applied MinGW patch to blockproperty.h (added cstdint include)");
+            }
+        }
+    }
+}
+
 fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
     let bundled_dir = manifest_dir.join("bundled");
     let build_dir = out_dir.join("build");
@@ -46,6 +83,12 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
             or download mdflib source to the bundled/ directory",
             bundled_dir.display()
         );
+    }
+
+    // Apply patches for MinGW/GCC compatibility
+    let target = env::var("TARGET").unwrap_or_default();
+    if target.contains("gnu") || target.contains("mingw") {
+        apply_mingw_patches(&bundled_dir);
     }
 
     // Configure with CMake
