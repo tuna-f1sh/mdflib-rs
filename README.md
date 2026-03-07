@@ -20,6 +20,43 @@ It was also an experiement for me using bindgen and Copilot agent to write some 
 
 You can install these dependencies using your system's package manager.
 
+### Platform-Specific Notes
+
+#### Windows
+
+On Windows, you have two options:
+
+1. **MSVC toolchain (Recommended)**: Requires Visual Studio 2017 or later with C++ support. Use vcpkg to install dependencies:
+   ```bash
+   vcpkg install zlib:x64-windows expat:x64-windows
+   set VCPKG_ROOT=C:\path\to\vcpkg
+   cargo build
+   ```
+
+2. **GNU toolchain (MinGW)**: Requires MinGW-w64 and dependencies. Use vcpkg with MinGW triplets:
+   ```bash
+   vcpkg install zlib:x64-mingw-static expat:x64-mingw-static
+   set VCPKG_ROOT=C:\path\to\vcpkg
+   rustup target add x86_64-pc-windows-gnu
+   cargo build --target x86_64-pc-windows-gnu
+   ```
+
+#### Linux
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install cmake build-essential libexpat1-dev zlib1g-dev
+
+# Fedora/RHEL
+sudo dnf install cmake gcc-c++ expat-devel zlib-devel
+```
+
+#### macOS
+
+```bash
+brew install cmake expat zlib
+```
+
 ## Usage
 
 Review the [mdflib documentation](https://ihedvall.github.io/mdflib/), the 'mdflib/examples/' and 'mdflib/tests/' directories in this repository.

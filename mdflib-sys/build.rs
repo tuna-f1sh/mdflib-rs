@@ -64,17 +64,57 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         .arg("-DCMAKE_CXX_STANDARD=17");
 
     // Platform-specific CMake settings
-    if cfg!(target_os = "windows") {
-        if cfg!(target_env = "msvc") {
+    // The TARGET env var is always set by Cargo and tells us what we're compiling for
+    let target = env::var("TARGET").unwrap_or_default();
+    
+    if target.contains("windows") {
+        if target.contains("msvc") {
             // MSVC target uses Visual Studio generator
-            cmake_config.arg("-G").arg("Visual Studio 16 2019");
-            if cfg!(target_arch = "x86_64") {
+            // Try different Visual Studio versions
+            let vs_generators = vec![
+                ("Visual Studio 17 2022", "VS 2022"),
+                ("Visual Studio 16 2019", "VS 2019"),
+                ("Visual Studio 15 2017", "VS 2017"),
+            ];
+            
+            let mut found_vs = false;
+            for (generator, name) in &vs_generators {
+                // Test if this generator is available
+                let test_output = Command::new("cmake")
+                    .arg("-G")
+                    .arg(generator)
+                    .arg("--help")
+                    .output();
+                    
+                if test_output.map_or(false, |o| o.status.success()) {
+                    println!("cargo:warning=Using CMake generator: {} ({})", generator, name);
+                    cmake_config.arg("-G").arg(generator);
+                    found_vs = true;
+                    break;
+                }
+            }
+            
+            if !found_vs {
+                eprintln!("\nERROR: No Visual Studio installation found for MSVC target.");
+                eprintln!("Please install Visual Studio 2017 or later with C++ support.");
+                eprintln!("\nAlternatively, use the GNU toolchain:");
+                eprintln!("  rustup target add x86_64-pc-windows-gnu");
+                eprintln!("  cargo build --target x86_64-pc-windows-gnu");
+                panic!("Visual Studio not found for MSVC target");
+            }
+            
+            if target.contains("x86_64") {
                 cmake_config.arg("-A").arg("x64");
-            } else if cfg!(target_arch = "x86") {
+            } else if target.contains("i686") || target.contains("i586") {
                 cmake_config.arg("-A").arg("Win32");
             }
+        } else if target.contains("gnu") {
+            // GNU target (MinGW) uses MinGW Makefiles
+            println!("cargo:warning=Using MinGW Makefiles generator for GNU target");
+            cmake_config.arg("-G").arg("MinGW Makefiles");
         } else {
-            // GNU target (MinGW) uses Unix Makefiles or MinGW Makefiles
+            // Fallback for other Windows toolchains
+            println!("cargo:warning=Unknown Windows toolchain, trying MinGW Makefiles");
             cmake_config.arg("-G").arg("MinGW Makefiles");
         }
     } else {
@@ -123,14 +163,23 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
     }
 
     // Build the C wrapper
-    cc::Build::new()
+    let mut cc_build = cc::Build::new();
+    cc_build
         .cpp(true)
         .file("src/mdf_c_wrapper.cpp")
         .include(install_dir.join("include"))
-        .include(bundled_dir.join("include"))
-        .flag("-Wno-overloaded-virtual")
-        .flag("-std=c++17")
-        .compile("mdf_c_wrapper");
+        .include(bundled_dir.join("include"));
+    
+    // Add compiler-specific flags
+    let target = env::var("TARGET").unwrap_or_default();
+    if target.contains("msvc") {
+        cc_build.flag("/std:c++17");
+    } else {
+        cc_build.flag("-Wno-overloaded-virtual");
+        cc_build.flag("-std=c++17");
+    }
+    
+    cc_build.compile("mdf_c_wrapper");
 
     // Set up linking
     setup_bundled_linking(&install_dir);
@@ -229,7 +278,9 @@ fn add_single_dependency_hint(cmake_config: &mut Command, name: &str) {
 }
 
 fn add_platform_dependency_hints(cmake_config: &mut Command) {
-    if cfg!(target_os = "macos") {
+    let target = env::var("TARGET").unwrap_or_default();
+    
+    if target.contains("apple") || target.contains("darwin") {
         if Path::new("/opt/homebrew/opt/zlib").exists() {
             cmake_config.arg("-DZLIB_ROOT=/opt/homebrew/opt");
             cmake_config.arg("-DZLIB_LIBRARY=/opt/homebrew/opt/zlib/lib/libz.a");
@@ -244,7 +295,7 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
         if Path::new("/usr/include/expat.h").exists() {
             cmake_config.arg("-DEXPAT_ROOT=/usr");
         }
-    } else if cfg!(target_os = "linux") {
+    } else if target.contains("linux") {
         // Arch Linux typically has zlib and expat in /usr/include and /usr/lib, so we can hint CMake to look there
         if Path::new("/usr/include/zlib.h").exists() {
             cmake_config.arg("-DZLIB_ROOT=/usr");
@@ -255,6 +306,23 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
         if Path::new("/usr/lib").exists() {
             cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.so");
             cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.so");
+        }
+    } else if target.contains("windows") {
+        // For Windows with vcpkg, try to find the dependencies
+        if let Ok(vcpkg_root) = env::var("VCPKG_ROOT") {
+            let vcpkg_path = PathBuf::from(&vcpkg_root);
+            let triplet = if target.contains("x86_64") {
+                "x64-mingw-static"
+            } else {
+                "x86-mingw-static"
+            };
+            
+            let vcpkg_installed = vcpkg_path.join("installed").join(triplet);
+            if vcpkg_installed.exists() {
+                cmake_config.arg(format!("-DCMAKE_PREFIX_PATH={}", vcpkg_installed.display()));
+                cmake_config.arg(format!("-DCMAKE_TOOLCHAIN_FILE={}", 
+                    vcpkg_path.join("scripts").join("buildsystems").join("vcpkg.cmake").display()));
+            }
         }
     }
 }
@@ -302,9 +370,16 @@ fn setup_system_linking(_manifest_dir: &Path) {
     let mut cc_build = cc::Build::new();
     cc_build
         .cpp(true)
-        .file("src/mdf_c_wrapper.cpp")
-        .flag("-Wno-overloaded-virtual")
-        .flag("-std=c++17");
+        .file("src/mdf_c_wrapper.cpp");
+    
+    // Add compiler-specific flags
+    let target = env::var("TARGET").unwrap_or_default();
+    if target.contains("msvc") {
+        cc_build.flag("/std:c++17");
+    } else {
+        cc_build.flag("-Wno-overloaded-virtual");
+        cc_build.flag("-std=c++17");
+    }
 
     // Try to find system-installed mdflib using pkg-config
     if let Ok(library) = pkg_config::Config::new()
