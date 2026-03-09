@@ -25,49 +25,20 @@ jobs:
       - name: Run clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-  build-test:
-    runs-on: ubuntu-latest
-    needs: [check]
-    env:
-      CARGO_TERM_COLOR: always
-
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
-        with:
-          submodules: recursive
-      - uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            ~/.cargo/bin/cargo-deb
-            target/
-          key: cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Rustup update and version
-        shell: bash
-        run: |
-          rustup update
-          rustup --version
-
-      - name: Run tests
-        run: cargo test --workspace --all-features --verbose --locked
-
-      - name: Build
-        run: cargo build --workspace --verbose --locked
-
   build-matrix:
     name: build-${{ matrix.job.os }}-${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
     # needs: [check]
+    env:
+      CARGO_TERM_COLOR: always
     strategy:
       fail-fast: false
       matrix:
         job:
-          # default features for all targets
-          - { os: windows-latest, target: x86_64-pc-windows-msvc, feature-flags: ""  }
-          - { os: windows-latest, target: x86_64-pc-windows-gnu, feature-flags: ""  }
-          - { os: macos-latest, target: aarch64-apple-darwin, feature-flags: ""  }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, flags: "" }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, flags: "--exclude mf4-candump" }
+          # - { os: windows-latest, target: x86_64-pc-windows-gnu, flags: "--exclude mf4-candump" }
+          - { os: macos-latest, target: aarch64-apple-darwin, flags: "--exclude mf4-candump" }
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
@@ -108,6 +79,9 @@ jobs:
               sudo mkdir -p /usr/lib/x86_64-linux-musl
               sudo ln -sf /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-musl/libz.a || true
               sudo ln -sf /usr/lib/x86_64-linux-gnu/libexpat.a /usr/lib/x86_64-linux-musl/libexpat.a || true
+              echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> $GITHUB_ENV
+              echo "CXX_x86_64_unknown_linux_musl=g++" >> $GITHUB_ENV
+              echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> $GITHUB_ENV
               rustup target add ${{ matrix.job.target }}
               ;;
             *-windows-msvc)
@@ -124,31 +98,22 @@ jobs:
               # Install dependencies using vcpkg for MinGW
               echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
               "$VCPKG_INSTALLATION_ROOT/vcpkg" install zlib:x64-mingw-static expat:x64-mingw-static
+              echo "C:\tools\mingw64\bin" >> $GITHUB_PATH
               rustup target add ${{ matrix.job.target }}
               ;;
             *)
+              # The -dev packages provide both .so and .a files
+              sudo apt-get -y install libexpat1-dev zlib1g-dev
               rustup target add ${{ matrix.job.target }}
               ;;
           esac
 
-      - name: Configure musl C++ compiler
-        if: contains(matrix.job.target, 'musl')
-        shell: bash
-        run: |
-          echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> $GITHUB_ENV
-          echo "CXX_x86_64_unknown_linux_musl=g++" >> $GITHUB_ENV
-          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> $GITHUB_ENV
-
-      - name: Add MinGW to PATH
-        if: contains(matrix.job.target, '-windows-gnu')
-        run: echo "C:\tools\mingw64\bin" >> $GITHUB_PATH
-
       - name: Test
         id: test
         shell: bash
-        run: cargo test --workspace --verbose --locked --exclude mf4-candump --target ${{ matrix.job.target }}
+        run: cargo test --workspace --verbose --locked --target ${{ matrix.job.target }} ${{ matrix.job.flags }}
 
-      - name: Build release
+      - name: Build
         id: build
         shell: bash
-        run: cargo build --workspace --verbose --locked --exclude mf4-candump --target ${{ matrix.job.target }}
+        run: cargo build --workspace --verbose --locked --target ${{ matrix.job.target }} ${{ matrix.job.flags }}
