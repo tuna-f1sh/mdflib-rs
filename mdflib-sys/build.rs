@@ -22,11 +22,51 @@ fn main() {
     println!("cargo:rerun-if-changed=bundled");
     println!("cargo:rerun-if-changed=src/mdf_c_wrapper.h");
     println!("cargo:rerun-if-changed=src/mdf_c_wrapper.cpp");
+    println!("cargo:rerun-if-env-changed=VCPKG_ROOT");
+    println!("cargo:rerun-if-env-changed=VCPKG_DEFAULT_TRIPLET");
+    println!("cargo:rerun-if-env-changed=CMAKE_GENERATOR");
 
     println!(
         "cargo:warning=TARGET: {}",
         env::var("TARGET").unwrap_or_else(|_| "unknown".to_string())
     );
+}
+
+fn is_msvc() -> bool {
+    cfg!(target_os = "windows") && cfg!(target_env = "msvc")
+}
+
+/// Returns (vcpkg_root, triplet) if VCPKG_ROOT is set and exists.
+/// Default triplet is `x64-windows-static-md` (static libs, dynamic CRT) to match
+/// Rust's default MSVC CRT linkage. Override with `VCPKG_DEFAULT_TRIPLET` env var.
+fn get_vcpkg_config() -> Option<(PathBuf, String)> {
+    let vcpkg_root = PathBuf::from(env::var("VCPKG_ROOT").ok()?);
+    if !vcpkg_root.exists() {
+        return None;
+    }
+
+    let triplet = env::var("VCPKG_DEFAULT_TRIPLET").unwrap_or_else(|_| {
+        let arch = if cfg!(target_arch = "x86_64") {
+            "x64"
+        } else {
+            "x86"
+        };
+        format!("{arch}-windows-static-md")
+    });
+
+    Some((vcpkg_root, triplet))
+}
+
+/// Apply platform-appropriate C++ compiler flags to a cc::Build.
+fn apply_cpp_flags(build: &mut cc::Build) {
+    if is_msvc() {
+        build
+            .flag("/std:c++17")
+            .define("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", None)
+            .define("_CRT_SECURE_NO_WARNINGS", None);
+    } else {
+        build.flag("-std=c++17").flag("-Wno-overloaded-virtual");
+    }
 }
 
 fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
@@ -64,12 +104,32 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         .arg("-DCMAKE_CXX_STANDARD=17");
 
     // Platform-specific CMake settings
-    if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
-        cmake_config.arg("-G").arg("Visual Studio 16 2019");
-        if cfg!(target_arch = "x86_64") {
-            cmake_config.arg("-A").arg("x64");
-        } else if cfg!(target_arch = "x86") {
-            cmake_config.arg("-A").arg("Win32");
+    if is_msvc() {
+        // Don't hardcode a Visual Studio version — let CMake auto-detect the
+        // installed version. The -A flag is only valid for VS generators, so
+        // skip it when the user has overridden CMAKE_GENERATOR to something
+        // else (e.g. Ninja).
+        if env::var("CMAKE_GENERATOR").map_or(true, |g| g.contains("Visual Studio")) {
+            if cfg!(target_arch = "x86_64") {
+                cmake_config.arg("-A").arg("x64");
+            } else if cfg!(target_arch = "x86") {
+                cmake_config.arg("-A").arg("Win32");
+            }
+        }
+
+        // Use vcpkg toolchain if available for automatic dependency resolution
+        if let Some((vcpkg_root, triplet)) = get_vcpkg_config() {
+            let toolchain = vcpkg_root.join("scripts/buildsystems/vcpkg.cmake");
+            if toolchain.exists() {
+                cmake_config.arg(format!(
+                    "-DCMAKE_TOOLCHAIN_FILE={}",
+                    toolchain.display()
+                ));
+                cmake_config.arg(format!("-DVCPKG_TARGET_TRIPLET={triplet}"));
+                // Use pre-installed packages rather than manifest mode so that
+                // the bundled vcpkg.json doesn't trigger a redundant install.
+                cmake_config.arg("-DVCPKG_MANIFEST_MODE=OFF");
+            }
         }
     } else {
         cmake_config.arg("-G").arg("Unix Makefiles");
@@ -116,14 +176,25 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
     }
 
     // Build the C wrapper
-    cc::Build::new()
+    let mut cc_build = cc::Build::new();
+    cc_build
         .cpp(true)
         .file("src/mdf_c_wrapper.cpp")
         .include(install_dir.join("include"))
-        .include(bundled_dir.join("include"))
-        .flag("-Wno-overloaded-virtual")
-        .flag("-std=c++17")
-        .compile("mdf_c_wrapper");
+        .include(bundled_dir.join("include"));
+    apply_cpp_flags(&mut cc_build);
+
+    // On MSVC with vcpkg, add vcpkg include path for dependency headers
+    if is_msvc() {
+        if let Some((vcpkg_root, triplet)) = get_vcpkg_config() {
+            let vcpkg_include = vcpkg_root.join("installed").join(&triplet).join("include");
+            if vcpkg_include.exists() {
+                cc_build.include(&vcpkg_include);
+            }
+        }
+    }
+
+    cc_build.compile("mdf_c_wrapper");
 
     // Set up linking
     setup_bundled_linking(&install_dir);
@@ -131,8 +202,13 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
 
 fn setup_dependencies() {
     println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
-    setup_dependency("zlib", "z");
-    setup_dependency("expat", "expat");
+    if is_msvc() {
+        setup_dependency("zlib", "zlib");
+        setup_dependency("expat", "libexpat");
+    } else {
+        setup_dependency("zlib", "z");
+        setup_dependency("expat", "expat");
+    }
 }
 
 fn setup_dependency(name: &str, fallback_name: &str) {
@@ -235,6 +311,17 @@ fn setup_bundled_linking(install_dir: &Path) {
         );
     }
 
+    // On Windows with vcpkg, add vcpkg lib directory so the linker can find
+    // zlib.lib / libexpat.lib that were installed by vcpkg.
+    if is_msvc() {
+        if let Some((vcpkg_root, triplet)) = get_vcpkg_config() {
+            let vcpkg_lib = vcpkg_root.join("installed").join(&triplet).join("lib");
+            if vcpkg_lib.exists() {
+                println!("cargo:rustc-link-search=native={}", vcpkg_lib.display());
+            }
+        }
+    }
+
     // Link the static libraries in the correct order
     println!("cargo:rustc-link-lib=static=mdf_c_wrapper");
     println!("cargo:rustc-link-lib=static=mdf");
@@ -247,7 +334,7 @@ fn setup_bundled_linking(install_dir: &Path) {
         println!("cargo:rustc-link-lib=dylib=user32");
         println!("cargo:rustc-link-lib=dylib=kernel32");
         println!("cargo:rustc-link-lib=dylib=ws2_32");
-        println!("cargo:rustc-link-lib=dylib=advapi2");
+        println!("cargo:rustc-link-lib=dylib=advapi32");
         println!("cargo:rustc-link-lib=dylib=shell32");
         println!("cargo:rustc-link-lib=dylib=ole32");
     } else if cfg!(target_os = "linux") {
@@ -266,9 +353,8 @@ fn setup_system_linking(_manifest_dir: &Path) {
     let mut cc_build = cc::Build::new();
     cc_build
         .cpp(true)
-        .file("src/mdf_c_wrapper.cpp")
-        .flag("-Wno-overloaded-virtual")
-        .flag("-std=c++17");
+        .file("src/mdf_c_wrapper.cpp");
+    apply_cpp_flags(&mut cc_build);
 
     // Try to find system-installed mdflib using pkg-config
     if let Ok(library) = pkg_config::Config::new()
@@ -299,14 +385,25 @@ fn setup_system_linking(_manifest_dir: &Path) {
             cc_build.include("/usr/local/include");
             cc_build.include("/opt/homebrew/include");
         } else if cfg!(target_os = "windows") {
-            println!("cargo:rustc-link-lib=dylib=stdc++");
             println!("cargo:rustc-link-lib=dylib=user32");
             println!("cargo:rustc-link-lib=dylib=kernel32");
             println!("cargo:rustc-link-lib=dylib=ws2_32");
-            println!("cargo:rustc-link-lib=dylib=advapi2");
+            println!("cargo:rustc-link-lib=dylib=advapi32");
             println!("cargo:rustc-link-lib=dylib=shell32");
             println!("cargo:rustc-link-lib=dylib=ole32");
             cc_build.include("C:/Program Files/mdflib/include");
+
+            // Add vcpkg include/lib paths if available
+            if let Some((vcpkg_root, triplet)) = get_vcpkg_config() {
+                let vcpkg_include = vcpkg_root.join("installed").join(&triplet).join("include");
+                let vcpkg_lib = vcpkg_root.join("installed").join(&triplet).join("lib");
+                if vcpkg_include.exists() {
+                    cc_build.include(&vcpkg_include);
+                }
+                if vcpkg_lib.exists() {
+                    println!("cargo:rustc-link-search=native={}", vcpkg_lib.display());
+                }
+            }
         }
     }
 

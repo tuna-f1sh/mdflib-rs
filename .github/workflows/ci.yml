@@ -88,7 +88,8 @@ jobs:
               # Use GitHub Actions' pre-installed vcpkg
               # VCPKG_INSTALLATION_ROOT is set by GitHub Actions
               echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
-              "$VCPKG_INSTALLATION_ROOT/vcpkg" install zlib:x64-windows-static expat:x64-windows-static
+              # Use static-md triplet: static libraries with dynamic CRT (matches Rust default)
+              "$VCPKG_INSTALLATION_ROOT/vcpkg" install zlib:x64-windows-static-md expat:x64-windows-static-md
               rustup target add ${{ matrix.job.target }}
               ;;
             *-windows-gnu)
