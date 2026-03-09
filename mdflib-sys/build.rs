@@ -182,6 +182,13 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         .file("src/mdf_c_wrapper.cpp")
         .include(install_dir.join("include"))
         .include(bundled_dir.join("include"));
+
+    // On Windows, mdflib's CMake installs headers to <prefix>/mdf/include/
+    let mdf_include = install_dir.join("mdf").join("include");
+    if mdf_include.exists() {
+        cc_build.include(&mdf_include);
+    }
+
     apply_cpp_flags(&mut cc_build);
 
     // On MSVC with vcpkg, add vcpkg include path for dependency headers
@@ -309,6 +316,13 @@ fn setup_bundled_linking(install_dir: &Path) {
             "cargo:rustc-link-search=native={}",
             install_dir.join("lib64").display()
         );
+    }
+
+    // On Windows, mdflib's CMake installs to <prefix>/mdf/lib/ rather than
+    // <prefix>/lib/. Add that path so the linker can find mdf.lib.
+    let mdf_lib_dir = install_dir.join("mdf").join("lib");
+    if mdf_lib_dir.exists() {
+        println!("cargo:rustc-link-search=native={}", mdf_lib_dir.display());
     }
 
     // On Windows with vcpkg, add vcpkg lib directory so the linker can find
