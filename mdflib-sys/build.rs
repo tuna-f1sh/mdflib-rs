@@ -57,6 +57,25 @@ fn get_vcpkg_config() -> Option<(PathBuf, String)> {
     Some((vcpkg_root, triplet))
 }
 
+/// Search the vcpkg lib directory for a library whose name contains `base_name`
+/// (case-insensitive). Returns the stem (filename without `.lib`) if found.
+/// This handles vcpkg's CRT-suffix naming, e.g. `libexpatMD.lib` for the
+/// `x64-windows-static-md` triplet.
+fn find_vcpkg_lib(base_name: &str) -> Option<String> {
+    let (vcpkg_root, triplet) = get_vcpkg_config()?;
+    let lib_dir = vcpkg_root.join("installed").join(&triplet).join("lib");
+    let lower = base_name.to_lowercase();
+    for entry in std::fs::read_dir(&lib_dir).ok()? {
+        let entry = entry.ok()?;
+        let fname = entry.file_name();
+        let name = fname.to_string_lossy();
+        if name.to_lowercase().contains(&lower) && name.ends_with(".lib") {
+            return Some(name.trim_end_matches(".lib").to_string());
+        }
+    }
+    None
+}
+
 /// Apply platform-appropriate C++ compiler flags to a cc::Build.
 fn apply_cpp_flags(build: &mut cc::Build) {
     if is_msvc() {
@@ -121,10 +140,7 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         if let Some((vcpkg_root, triplet)) = get_vcpkg_config() {
             let toolchain = vcpkg_root.join("scripts/buildsystems/vcpkg.cmake");
             if toolchain.exists() {
-                cmake_config.arg(format!(
-                    "-DCMAKE_TOOLCHAIN_FILE={}",
-                    toolchain.display()
-                ));
+                cmake_config.arg(format!("-DCMAKE_TOOLCHAIN_FILE={}", toolchain.display()));
                 cmake_config.arg(format!("-DVCPKG_TARGET_TRIPLET={triplet}"));
                 // Use pre-installed packages rather than manifest mode so that
                 // the bundled vcpkg.json doesn't trigger a redundant install.
@@ -210,8 +226,12 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
 fn setup_dependencies() {
     println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
     if is_msvc() {
-        setup_dependency("zlib", "zlib");
-        setup_dependency("expat", "libexpat");
+        // On MSVC, vcpkg library names may carry a CRT-linkage suffix.
+        // e.g. expat → libexpatMD.lib (dynamic CRT) or libexpatMT.lib (static CRT).
+        let zlib_name = find_vcpkg_lib("zlib").unwrap_or_else(|| "zlib".to_string());
+        let expat_name = find_vcpkg_lib("expat").unwrap_or_else(|| "libexpat".to_string());
+        setup_dependency("zlib", &zlib_name);
+        setup_dependency("expat", &expat_name);
     } else {
         setup_dependency("zlib", "z");
         setup_dependency("expat", "expat");
@@ -365,9 +385,7 @@ fn setup_bundled_linking(install_dir: &Path) {
 
 fn setup_system_linking(_manifest_dir: &Path) {
     let mut cc_build = cc::Build::new();
-    cc_build
-        .cpp(true)
-        .file("src/mdf_c_wrapper.cpp");
+    cc_build.cpp(true).file("src/mdf_c_wrapper.cpp");
     apply_cpp_flags(&mut cc_build);
 
     // Try to find system-installed mdflib using pkg-config
