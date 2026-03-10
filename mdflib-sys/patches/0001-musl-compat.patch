@@ -1,0 +1,41 @@
+diff --git a/mdflib/src/blockproperty.h b/mdflib/src/blockproperty.h
+index e3ae16c..57bd809 100644
+--- a/mdflib/src/blockproperty.h
++++ b/mdflib/src/blockproperty.h
+@@ -3,6 +3,7 @@
+  * SPDX-License-Identifier: MIT
+  */
+ #pragma once
++#include <cstdint>
+ #include <string>
+ namespace mdf::detail {
+ enum class BlockItemType {
+diff --git a/mdflib/src/platform.cpp b/mdflib/src/platform.cpp
+index 2e7b9dd..6dacaea 100644
+--- a/mdflib/src/platform.cpp
++++ b/mdflib/src/platform.cpp
+@@ -31,19 +31,15 @@ int strnicmp(const char *__s1, const char *__s2, size_t __n) {
+ void strerror(int __errnum, char *__buf, size_t __buflen) {
+ #if (_WIN32)
+   strerror_s(__buf, __buflen, __errnum);
+-#elif (__APPLE__ || __FreeBSD__)
+-  int err = strerror_r(__errnum, __buf, __buflen);
+-  if (err == 0)
+-  {
+-    
+-  }
+-#elif (__CYGWIN__)
+-  strerror_r(__errnum, __buf, __buflen);
+-#else
++#elif defined(__GLIBC__) && !defined(__APPLE__)
++  // GNU-specific strerror_r returns char*
+   auto* dummy = strerror_r(__errnum, __buf, __buflen);
+   if (dummy != nullptr) {
+     strcpy(__buf, dummy);
+   }
++#else
++  // POSIX strerror_r (musl, macOS, FreeBSD, Cygwin) returns int
++  strerror_r(__errnum, __buf, __buflen);
+ #endif
+ }
+ 

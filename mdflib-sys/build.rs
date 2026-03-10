@@ -90,6 +90,96 @@ fn apply_cpp_flags(build: &mut cc::Build) {
     }
 }
 
+/// Apply all `*.patch` files from `mdflib-sys/patches/` to the bundled source
+/// tree. Uses `git apply` if available, otherwise falls back to `patch -p1`.
+/// Already-applied patches are skipped, making repeated builds idempotent.
+fn apply_patches(manifest_dir: &Path, bundled_dir: &Path) {
+    let patches_dir = manifest_dir.join("patches");
+    if !patches_dir.exists() {
+        return;
+    }
+    let mut patches: Vec<_> = std::fs::read_dir(&patches_dir)
+        .expect("Failed to read patches directory")
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|ext| ext == "patch"))
+        .collect();
+    patches.sort();
+
+    for patch in &patches {
+        if try_apply_patch(bundled_dir, patch) {
+            println!(
+                "cargo:warning=Applied patch: {}",
+                patch.file_name().unwrap().to_string_lossy()
+            );
+        }
+    }
+
+    // Rebuild if patches change
+    println!("cargo:rerun-if-changed={}", patches_dir.display());
+    for patch in &patches {
+        println!("cargo:rerun-if-changed={}", patch.display());
+    }
+}
+
+/// Try to apply a single patch file. Returns true if newly applied, false if
+/// already applied. Panics on failure.
+fn try_apply_patch(bundled_dir: &Path, patch: &Path) -> bool {
+    // Try git apply first (available when building from a git checkout)
+    if let Ok(output) = Command::new("git")
+        .current_dir(bundled_dir)
+        .args(["apply", "--check", "--reverse"])
+        .arg(patch)
+        .output()
+    {
+        if output.status.success() {
+            return false; // already applied
+        }
+        // Not yet applied — try to apply
+        let apply = Command::new("git")
+            .current_dir(bundled_dir)
+            .args(["apply"])
+            .arg(patch)
+            .output()
+            .expect("Failed to run git apply");
+        if apply.status.success() {
+            return true;
+        }
+        // git apply failed — fall through to `patch` command
+    }
+
+    // Fall back to the `patch` utility (e.g. in Docker / Alpine)
+    if let Ok(output) = Command::new("patch")
+        .current_dir(bundled_dir)
+        .args(["-p1", "--forward", "-s"])
+        .stdin(std::fs::File::open(patch).expect("Failed to open patch file"))
+        .output()
+    {
+        if output.status.success() {
+            return true;
+        }
+        // Exit code 1 with --forward means already applied
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if stderr.contains("Reversed (or previously applied)")
+            || stdout.contains("Reversed (or previously applied)")
+        {
+            return false;
+        }
+        panic!(
+            "Failed to apply patch {}:\n{}{}",
+            patch.display(),
+            stdout,
+            stderr,
+        );
+    }
+
+    panic!(
+        "Neither `git` nor `patch` found. Cannot apply {}",
+        patch.display()
+    );
+}
+
 fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
     let bundled_dir = manifest_dir.join("bundled");
     let build_dir = out_dir.join("build");
@@ -108,6 +198,9 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
             bundled_dir.display()
         );
     }
+
+    // Apply patches from mdflib-sys/patches/ to the bundled source.
+    apply_patches(manifest_dir, &bundled_dir);
 
     // Configure with CMake
     let mut cmake_config = Command::new("cmake");
@@ -361,14 +454,21 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
                 }
             }
         } else {
+            // Arch linux and some other distros put zlib and expat in /usr/
             if Path::new("/usr/include/zlib.h").exists() {
                 cmake_config.arg("-DZLIB_ROOT=/usr");
             }
             if Path::new("/usr/include/expat.h").exists() {
                 cmake_config.arg("-DEXPAT_ROOT=/usr");
             }
-            if Path::new("/usr/lib").exists() {
+            if Path::new("/usr/lib/libexpat.a").exists() {
+                cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.a");
+            } else if Path::new("/usr/lib/libexpat.so").exists() {
                 cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.so");
+            }
+            if Path::new("/usr/lib/libz.a").exists() {
+                cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.a");
+            } else if Path::new("/usr/lib/libz.so").exists() {
                 cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.so");
             }
         }
