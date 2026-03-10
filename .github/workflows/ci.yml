@@ -36,8 +36,8 @@ jobs:
       matrix:
         job:
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, flags: "" }
-          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, flags: "--exclude mf4-candump" }
           - { os: windows-latest, target: x86_64-pc-windows-msvc, flags: "--exclude mf4-candump" }
+          # doesn't really work...
           # - { os: windows-latest, target: x86_64-pc-windows-gnu, flags: "--exclude mf4-candump" }
           - { os: macos-latest, target: aarch64-apple-darwin, flags: "--exclude mf4-candump" }
     steps:
@@ -66,43 +66,6 @@ jobs:
           case ${{ matrix.job.target }} in
             *-apple-darwin)
               brew install cmake expat zlib
-              rustup target add ${{ matrix.job.target }}
-              ;;
-            *-musl)
-              sudo apt-get update
-              sudo apt-get -y install musl-tools musl-dev cmake build-essential
-              sudo apt-get -y install libexpat1-dev zlib1g-dev
-
-              # Create a musl-aware C++ compiler wrapper.
-              # Plain g++ uses glibc headers, which reference glibc-specific symbols
-              # (e.g. __isoc23_strtoull) that don't exist in musl.  This wrapper
-              # uses -nostdinc to remove glibc headers and explicitly adds the C++
-              # standard library headers + musl C headers in the correct order so
-              # that #include_next from <cstdlib> finds musl's <stdlib.h>.
-              GCC_VER=$(g++ -dumpversion | cut -d. -f1)
-              {
-                echo '#!/bin/sh'
-                echo "exec g++ \"\$@\" -nostdinc -isystem /usr/include/c++/$GCC_VER -isystem /usr/include/x86_64-linux-gnu/c++/$GCC_VER -isystem /usr/include/c++/$GCC_VER/backward -isystem /usr/lib/gcc/x86_64-linux-gnu/$GCC_VER/include -isystem /usr/include/x86_64-linux-musl"
-              } | sudo tee /usr/local/bin/musl-g++ >/dev/null
-              sudo chmod +x /usr/local/bin/musl-g++
-
-              # Symlink static libraries into the musl sysroot
-              sudo mkdir -p /usr/lib/x86_64-linux-musl
-              sudo ln -sf /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-musl/libz.a || true
-              sudo ln -sf /usr/lib/x86_64-linux-gnu/libexpat.a /usr/lib/x86_64-linux-musl/libexpat.a || true
-              sudo ln -sf "$(g++ -print-file-name=libstdc++.a)" /usr/lib/x86_64-linux-musl/libstdc++.a || true
-
-              # Symlink zlib/expat headers into the musl include directory so
-              # CMake finds them without adding -I/usr/include (which would
-              # pull in glibc headers that conflict with musl).
-              sudo ln -sf /usr/include/zlib.h /usr/include/x86_64-linux-musl/zlib.h || true
-              sudo ln -sf /usr/include/zconf.h /usr/include/x86_64-linux-musl/zconf.h || true
-              sudo ln -sf /usr/include/expat.h /usr/include/x86_64-linux-musl/expat.h || true
-              sudo ln -sf /usr/include/expat_external.h /usr/include/x86_64-linux-musl/expat_external.h || true
-
-              echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> $GITHUB_ENV
-              echo "CXX_x86_64_unknown_linux_musl=musl-g++" >> $GITHUB_ENV
-              echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> $GITHUB_ENV
               rustup target add ${{ matrix.job.target }}
               ;;
             *-windows-msvc)
