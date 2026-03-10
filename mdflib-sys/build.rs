@@ -25,11 +25,6 @@ fn main() {
     println!("cargo:rerun-if-env-changed=VCPKG_ROOT");
     println!("cargo:rerun-if-env-changed=VCPKG_DEFAULT_TRIPLET");
     println!("cargo:rerun-if-env-changed=CMAKE_GENERATOR");
-
-    println!(
-        "cargo:warning=TARGET: {}",
-        env::var("TARGET").unwrap_or_else(|_| "unknown".to_string())
-    );
 }
 
 fn is_msvc() -> bool {
@@ -164,10 +159,7 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
             .cpp(true)
             .cargo_metadata(false)
             .get_compiler();
-        cmake_config.arg(format!(
-            "-DCMAKE_C_COMPILER={}",
-            cc_tool.path().display()
-        ));
+        cmake_config.arg(format!("-DCMAKE_C_COMPILER={}", cc_tool.path().display()));
         cmake_config.arg(format!(
             "-DCMAKE_CXX_COMPILER={}",
             cxx_tool.path().display()
@@ -266,14 +258,12 @@ fn setup_dependency(name: &str, fallback_name: &str) {
     println!("cargo:rerun-if-env-changed={upper_name}_LIBRARY");
     println!("cargo:rerun-if-env-changed={upper_name}_INCLUDE_DIR");
 
-    // For musl static builds, force static linkage
-    let static_prefix = if is_musl() { "static=" } else { "" };
+    // Try to static link
+    let static_prefix = "static=";
 
-    // Try pkg-config first
     let mut pkg = pkg_config::Config::new();
-    if is_musl() {
-        pkg.statik(true);
-    }
+    pkg.statik(true);
+
     if pkg.probe(name).is_ok() {
         println!("Found {name} via pkg-config");
         return;
@@ -342,17 +332,20 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
             cmake_config.arg("-DEXPAT_ROOT=/usr");
         }
     } else if cfg!(target_os = "linux") {
-        if Path::new("/usr/include/zlib.h").exists() {
-            cmake_config.arg("-DZLIB_ROOT=/usr");
-        }
-        if Path::new("/usr/include/expat.h").exists() {
-            cmake_config.arg("-DEXPAT_ROOT=/usr");
-        }
-
         if is_musl() {
-            // For musl static builds, point CMake at static .a libraries.
-            // Check the musl sysroot first, then fall back to the GNU multiarch dir.
+            // For musl builds, we must NOT set ZLIB_ROOT=/usr or EXPAT_ROOT=/usr
+            // because that causes CMake to add -I/usr/include to the compiler
+            // flags, which pulls in glibc headers (e.g. features-time64.h →
+            // bits/wordsize.h) that don't exist in the musl sysroot and conflict
+            // with the musl-g++ wrapper's carefully crafted -isystem paths.
+            //
+            // Instead, set explicit INCLUDE_DIR and LIBRARY paths so CMake never
+            // adds /usr/include to the search path.
             let search_dirs = musl_lib_search_dirs();
+            if let Some(inc) = musl_include_dir() {
+                cmake_config.arg(format!("-DZLIB_INCLUDE_DIR={inc}"));
+                cmake_config.arg(format!("-DEXPAT_INCLUDE_DIR={inc}"));
+            }
             for lib_dir in &search_dirs {
                 let zlib = format!("{lib_dir}/libz.a");
                 if Path::new(&zlib).exists() {
@@ -367,9 +360,17 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
                     break;
                 }
             }
-        } else if Path::new("/usr/lib").exists() {
-            cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.so");
-            cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.so");
+        } else {
+            if Path::new("/usr/include/zlib.h").exists() {
+                cmake_config.arg("-DZLIB_ROOT=/usr");
+            }
+            if Path::new("/usr/include/expat.h").exists() {
+                cmake_config.arg("-DEXPAT_ROOT=/usr");
+            }
+            if Path::new("/usr/lib").exists() {
+                cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.so");
+                cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.so");
+            }
         }
     }
 }
@@ -393,6 +394,21 @@ fn musl_lib_search_dirs() -> Vec<String> {
         }
     }
     dirs
+}
+
+/// Return the musl include directory (e.g. /usr/include/x86_64-linux-musl)
+/// where library headers (zlib.h, expat.h) should be found without pulling in
+/// glibc system headers from /usr/include.
+fn musl_include_dir() -> Option<String> {
+    if let Ok(target) = env::var("TARGET") {
+        if let Some(arch) = target.split('-').next() {
+            let musl_dir = format!("/usr/include/{arch}-linux-musl");
+            if Path::new(&musl_dir).exists() {
+                return Some(musl_dir);
+            }
+        }
+    }
+    None
 }
 
 /// Add the GCC library directory to the linker search path so that

@@ -92,6 +92,14 @@ jobs:
               sudo ln -sf /usr/lib/x86_64-linux-gnu/libexpat.a /usr/lib/x86_64-linux-musl/libexpat.a || true
               sudo ln -sf "$(g++ -print-file-name=libstdc++.a)" /usr/lib/x86_64-linux-musl/libstdc++.a || true
 
+              # Symlink zlib/expat headers into the musl include directory so
+              # CMake finds them without adding -I/usr/include (which would
+              # pull in glibc headers that conflict with musl).
+              sudo ln -sf /usr/include/zlib.h /usr/include/x86_64-linux-musl/zlib.h || true
+              sudo ln -sf /usr/include/zconf.h /usr/include/x86_64-linux-musl/zconf.h || true
+              sudo ln -sf /usr/include/expat.h /usr/include/x86_64-linux-musl/expat.h || true
+              sudo ln -sf /usr/include/expat_external.h /usr/include/x86_64-linux-musl/expat_external.h || true
+
               echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> $GITHUB_ENV
               echo "CXX_x86_64_unknown_linux_musl=musl-g++" >> $GITHUB_ENV
               echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> $GITHUB_ENV
