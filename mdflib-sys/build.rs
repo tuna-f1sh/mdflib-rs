@@ -36,6 +36,13 @@ fn is_msvc() -> bool {
     cfg!(target_os = "windows") && cfg!(target_env = "msvc")
 }
 
+/// Check whether the Cargo TARGET (not the host) uses musl libc.
+/// Uses `CARGO_CFG_TARGET_ENV` because `cfg!()` in build scripts checks the
+/// host, which is wrong when cross-compiling from glibc → musl.
+fn is_musl() -> bool {
+    env::var("CARGO_CFG_TARGET_ENV").is_ok_and(|v| v == "musl")
+}
+
 /// Returns (vcpkg_root, triplet) if VCPKG_ROOT is set and exists.
 /// Default triplet is `x64-windows-static-md` (static libs, dynamic CRT) to match
 /// Rust's default MSVC CRT linkage. Override with `VCPKG_DEFAULT_TRIPLET` env var.
@@ -149,6 +156,22 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         }
     } else {
         cmake_config.arg("-G").arg("Unix Makefiles");
+
+        // Pass the compilers detected by the cc crate to CMake so it uses the
+        // same toolchain — essential for musl targets where CC is musl-gcc.
+        let cc_tool = cc::Build::new().cargo_metadata(false).get_compiler();
+        let cxx_tool = cc::Build::new()
+            .cpp(true)
+            .cargo_metadata(false)
+            .get_compiler();
+        cmake_config.arg(format!(
+            "-DCMAKE_C_COMPILER={}",
+            cc_tool.path().display()
+        ));
+        cmake_config.arg(format!(
+            "-DCMAKE_CXX_COMPILER={}",
+            cxx_tool.path().display()
+        ));
     }
 
     // Help CMake find dependencies
@@ -243,8 +266,15 @@ fn setup_dependency(name: &str, fallback_name: &str) {
     println!("cargo:rerun-if-env-changed={upper_name}_LIBRARY");
     println!("cargo:rerun-if-env-changed={upper_name}_INCLUDE_DIR");
 
+    // For musl static builds, force static linkage
+    let static_prefix = if is_musl() { "static=" } else { "" };
+
     // Try pkg-config first
-    if pkg_config::probe_library(name).is_ok() {
+    let mut pkg = pkg_config::Config::new();
+    if is_musl() {
+        pkg.statik(true);
+    }
+    if pkg.probe(name).is_ok() {
         println!("Found {name} via pkg-config");
         return;
     }
@@ -259,7 +289,7 @@ fn setup_dependency(name: &str, fallback_name: &str) {
         if let Some(lib_name) = lib_path.file_stem() {
             let lib_name_str = lib_name.to_string_lossy();
             let clean_name = lib_name_str.strip_prefix("lib").unwrap_or(&lib_name_str);
-            println!("cargo:rustc-link-lib={clean_name}");
+            println!("cargo:rustc-link-lib={static_prefix}{clean_name}");
         }
         return;
     }
@@ -268,7 +298,7 @@ fn setup_dependency(name: &str, fallback_name: &str) {
     println!(
         "cargo:warning={name} not found via pkg-config or environment variables, using system defaults"
     );
-    println!("cargo:rustc-link-lib={fallback_name}");
+    println!("cargo:rustc-link-lib={static_prefix}{fallback_name}");
 }
 
 fn add_dependency_hints(cmake_config: &mut Command) {
@@ -312,16 +342,75 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
             cmake_config.arg("-DEXPAT_ROOT=/usr");
         }
     } else if cfg!(target_os = "linux") {
-        // Arch Linux typically has zlib and expat in /usr/include and /usr/lib, so we can hint CMake to look there
         if Path::new("/usr/include/zlib.h").exists() {
             cmake_config.arg("-DZLIB_ROOT=/usr");
         }
         if Path::new("/usr/include/expat.h").exists() {
             cmake_config.arg("-DEXPAT_ROOT=/usr");
         }
-        if Path::new("/usr/lib").exists() {
+
+        if is_musl() {
+            // For musl static builds, point CMake at static .a libraries.
+            // Check the musl sysroot first, then fall back to the GNU multiarch dir.
+            let search_dirs = musl_lib_search_dirs();
+            for lib_dir in &search_dirs {
+                let zlib = format!("{lib_dir}/libz.a");
+                if Path::new(&zlib).exists() {
+                    cmake_config.arg(format!("-DZLIB_LIBRARY={zlib}"));
+                    break;
+                }
+            }
+            for lib_dir in &search_dirs {
+                let expat = format!("{lib_dir}/libexpat.a");
+                if Path::new(&expat).exists() {
+                    cmake_config.arg(format!("-DEXPAT_LIBRARY={expat}"));
+                    break;
+                }
+            }
+        } else if Path::new("/usr/lib").exists() {
             cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.so");
             cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.so");
+        }
+    }
+}
+
+/// Return candidate library directories for musl targets, ordered by preference.
+fn musl_lib_search_dirs() -> Vec<String> {
+    let mut dirs = Vec::new();
+    // Architecture-specific musl sysroot (e.g. /usr/lib/x86_64-linux-musl)
+    if let Ok(target) = env::var("TARGET") {
+        if let Some(arch) = target.split('-').next() {
+            let musl_dir = format!("/usr/lib/{arch}-linux-musl");
+            if Path::new(&musl_dir).exists() {
+                dirs.push(musl_dir);
+            }
+        }
+    }
+    // GNU multiarch dir (static .a files from -dev packages work with musl)
+    for dir in &["/usr/lib/x86_64-linux-gnu", "/usr/lib"] {
+        if Path::new(dir).exists() {
+            dirs.push(dir.to_string());
+        }
+    }
+    dirs
+}
+
+/// Add the GCC library directory to the linker search path so that
+/// `libstdc++.a` (and `libgcc.a` / `libgcc_eh.a`) can be found when
+/// statically linking C++ code on musl targets.
+fn add_gcc_lib_search_path() {
+    if let Ok(output) = Command::new("g++")
+        .arg("-print-file-name=libstdc++.a")
+        .output()
+    {
+        if output.status.success() {
+            let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            let path = Path::new(&path_str);
+            if path.is_absolute() {
+                if let Some(dir) = path.parent() {
+                    println!("cargo:rustc-link-search=native={}", dir.display());
+                }
+            }
         }
     }
 }
@@ -372,10 +461,23 @@ fn setup_bundled_linking(install_dir: &Path) {
         println!("cargo:rustc-link-lib=dylib=shell32");
         println!("cargo:rustc-link-lib=dylib=ole32");
     } else if cfg!(target_os = "linux") {
-        println!("cargo:rustc-link-lib=dylib=stdc++");
-        println!("cargo:rustc-link-lib=dylib=m");
-        println!("cargo:rustc-link-lib=dylib=pthread");
-        println!("cargo:rustc-link-lib=dylib=dl");
+        if is_musl() {
+            // For musl, link stdc++ statically for a self-contained binary.
+            // m, pthread, and dl are part of musl's libc — no separate linking.
+            println!("cargo:rustc-link-lib=static=stdc++");
+            // Add the musl sysroot lib dir so the linker finds static .a files
+            for dir in musl_lib_search_dirs() {
+                println!("cargo:rustc-link-search=native={dir}");
+            }
+            // The musl-gcc specs may omit the GCC lib directory where
+            // libstdc++.a lives. Ask g++ for the path and add it explicitly.
+            add_gcc_lib_search_path();
+        } else {
+            println!("cargo:rustc-link-lib=dylib=stdc++");
+            println!("cargo:rustc-link-lib=dylib=m");
+            println!("cargo:rustc-link-lib=dylib=pthread");
+            println!("cargo:rustc-link-lib=dylib=dl");
+        }
     } else if cfg!(target_os = "macos") {
         println!("cargo:rustc-link-lib=dylib=c++");
         println!("cargo:rustc-link-lib=dylib=System");
@@ -404,10 +506,18 @@ fn setup_system_linking(_manifest_dir: &Path) {
         setup_dependencies();
 
         if cfg!(target_os = "linux") {
-            println!("cargo:rustc-link-lib=dylib=stdc++");
-            println!("cargo:rustc-link-lib=dylib=m");
-            println!("cargo:rustc-link-lib=dylib=pthread");
-            println!("cargo:rustc-link-lib=dylib=dl");
+            if is_musl() {
+                println!("cargo:rustc-link-lib=static=stdc++");
+                for dir in musl_lib_search_dirs() {
+                    println!("cargo:rustc-link-search=native={dir}");
+                }
+                add_gcc_lib_search_path();
+            } else {
+                println!("cargo:rustc-link-lib=dylib=stdc++");
+                println!("cargo:rustc-link-lib=dylib=m");
+                println!("cargo:rustc-link-lib=dylib=pthread");
+                println!("cargo:rustc-link-lib=dylib=dl");
+            }
             cc_build.include("/usr/local/include");
             cc_build.include("/usr/include");
         } else if cfg!(target_os = "macos") {

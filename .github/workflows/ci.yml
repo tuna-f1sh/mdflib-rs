@@ -36,6 +36,7 @@ jobs:
       matrix:
         job:
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, flags: "" }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl, flags: "--exclude mf4-candump" }
           - { os: windows-latest, target: x86_64-pc-windows-msvc, flags: "--exclude mf4-candump" }
           # - { os: windows-latest, target: x86_64-pc-windows-gnu, flags: "--exclude mf4-candump" }
           - { os: macos-latest, target: aarch64-apple-darwin, flags: "--exclude mf4-candump" }
@@ -69,18 +70,30 @@ jobs:
               ;;
             *-musl)
               sudo apt-get update
-              sudo apt-get -y install musl-tools musl-dev
-              # Install cmake and build essentials
-              sudo apt-get -y install cmake build-essential
-              # For musl, we need to build static libraries or use existing .a files
-              # The -dev packages provide both .so and .a files
+              sudo apt-get -y install musl-tools musl-dev cmake build-essential
               sudo apt-get -y install libexpat1-dev zlib1g-dev
-              # Create symlinks in musl lib directory for static libraries
+
+              # Create a musl-aware C++ compiler wrapper.
+              # Plain g++ uses glibc headers, which reference glibc-specific symbols
+              # (e.g. __isoc23_strtoull) that don't exist in musl.  This wrapper
+              # uses -nostdinc to remove glibc headers and explicitly adds the C++
+              # standard library headers + musl C headers in the correct order so
+              # that #include_next from <cstdlib> finds musl's <stdlib.h>.
+              GCC_VER=$(g++ -dumpversion | cut -d. -f1)
+              {
+                echo '#!/bin/sh'
+                echo "exec g++ \"\$@\" -nostdinc -isystem /usr/include/c++/$GCC_VER -isystem /usr/include/x86_64-linux-gnu/c++/$GCC_VER -isystem /usr/include/c++/$GCC_VER/backward -isystem /usr/lib/gcc/x86_64-linux-gnu/$GCC_VER/include -isystem /usr/include/x86_64-linux-musl"
+              } | sudo tee /usr/local/bin/musl-g++ >/dev/null
+              sudo chmod +x /usr/local/bin/musl-g++
+
+              # Symlink static libraries into the musl sysroot
               sudo mkdir -p /usr/lib/x86_64-linux-musl
               sudo ln -sf /usr/lib/x86_64-linux-gnu/libz.a /usr/lib/x86_64-linux-musl/libz.a || true
               sudo ln -sf /usr/lib/x86_64-linux-gnu/libexpat.a /usr/lib/x86_64-linux-musl/libexpat.a || true
+              sudo ln -sf "$(g++ -print-file-name=libstdc++.a)" /usr/lib/x86_64-linux-musl/libstdc++.a || true
+
               echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> $GITHUB_ENV
-              echo "CXX_x86_64_unknown_linux_musl=g++" >> $GITHUB_ENV
+              echo "CXX_x86_64_unknown_linux_musl=musl-g++" >> $GITHUB_ENV
               echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> $GITHUB_ENV
               rustup target add ${{ matrix.job.target }}
               ;;
