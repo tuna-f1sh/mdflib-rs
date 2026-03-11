@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: main
   pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   check:
@@ -13,30 +13,38 @@ jobs:
       CARGO_TERM_COLOR: always
     runs-on: ubuntu-latest
     steps:
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           submodules: recursive
+
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        id: format
+        shell: bash
+        run: cargo fmt -- --check
 
       - name: Run clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-  build-test:
-    runs-on: ubuntu-latest
-    needs: [check]
+  build-matrix:
+    name: build-${{ matrix.job.os }}-${{ matrix.job.target }}
+    runs-on: ${{ matrix.job.os }}
+    # needs: [check]
     env:
       CARGO_TERM_COLOR: always
-
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, flags: "" }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, flags: "--exclude mf4-candump" }
+          # doesn't really work...
+          # - { os: windows-latest, target: x86_64-pc-windows-gnu, flags: "--exclude mf4-candump" }
+          - { os: macos-latest, target: aarch64-apple-darwin, flags: "--exclude mf4-candump" }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           submodules: recursive
-      - uses: actions/cache@v4
+      - uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v4
         with:
           path: |
             ~/.cargo/registry/index/
@@ -44,13 +52,53 @@ jobs:
             ~/.cargo/git/db/
             ~/.cargo/bin/cargo-deb
             target/
-          key: cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
+          key: ${{ matrix.job.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Rustup update and version
+        shell: bash
+        run: |
+          rustup update
+          rustup --version
+
+      - name: Install target and dependencies
+        shell: bash
+        run: |
+          case ${{ matrix.job.target }} in
+            *-apple-darwin)
+              brew install cmake expat zlib
+              rustup target add ${{ matrix.job.target }}
+              ;;
+            *-windows-msvc)
+              # Use GitHub Actions' pre-installed vcpkg
+              # VCPKG_INSTALLATION_ROOT is set by GitHub Actions
+              echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+              # Use static-md triplet: static libraries with dynamic CRT (matches Rust default)
+              "$VCPKG_INSTALLATION_ROOT/vcpkg" install zlib:x64-windows-static-md expat:x64-windows-static-md
+              rustup target add ${{ matrix.job.target }}
+              ;;
+            *-windows-gnu)
+              choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+              choco install mingw -y
+              choco install make -y
+              # Install dependencies using vcpkg for MinGW
+              echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+              "$VCPKG_INSTALLATION_ROOT/vcpkg" install zlib:x64-mingw-static expat:x64-mingw-static
+              echo "C:\tools\mingw64\bin" >> $GITHUB_PATH
+              rustup target add ${{ matrix.job.target }}
+              ;;
+            *)
+              # The -dev packages provide both .so and .a files
+              sudo apt-get -y install libexpat1-dev zlib1g-dev
+              rustup target add ${{ matrix.job.target }}
+              ;;
+          esac
+
+      - name: Test
+        id: test
+        shell: bash
+        run: cargo test --workspace --verbose --locked --target ${{ matrix.job.target }} ${{ matrix.job.flags }}
 
       - name: Build
-        run: cargo build --workspace --all-features --verbose
-
-      - name: Run tests
-        run: cargo test --workspace --all-features --verbose
+        id: build
+        shell: bash
+        run: cargo build --workspace --verbose --locked --target ${{ matrix.job.target }} ${{ matrix.job.flags }}

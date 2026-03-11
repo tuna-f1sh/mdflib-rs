@@ -2,6 +2,10 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Default library directories to check for static archives when pkg-config
+/// doesn't report any `-L` paths (i.e. the libs are in the system default).
+const DEFAULT_LIB_DIRS: &[&str] = &["/usr/lib", "/usr/lib64"];
+
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
@@ -22,10 +26,161 @@ fn main() {
     println!("cargo:rerun-if-changed=bundled");
     println!("cargo:rerun-if-changed=src/mdf_c_wrapper.h");
     println!("cargo:rerun-if-changed=src/mdf_c_wrapper.cpp");
+    println!("cargo:rerun-if-env-changed=VCPKG_ROOT");
+    println!("cargo:rerun-if-env-changed=VCPKG_DEFAULT_TRIPLET");
+    println!("cargo:rerun-if-env-changed=CMAKE_GENERATOR");
+}
 
-    println!(
-        "cargo:warning=TARGET: {}",
-        env::var("TARGET").unwrap_or_else(|_| "unknown".to_string())
+fn is_msvc() -> bool {
+    cfg!(target_os = "windows") && cfg!(target_env = "msvc")
+}
+
+/// Check whether the Cargo TARGET (not the host) uses musl libc.
+/// Uses `CARGO_CFG_TARGET_ENV` because `cfg!()` in build scripts checks the
+/// host, which is wrong when cross-compiling from glibc → musl.
+fn is_musl() -> bool {
+    env::var("CARGO_CFG_TARGET_ENV").is_ok_and(|v| v == "musl")
+}
+
+/// Returns (vcpkg_root, triplet) if VCPKG_ROOT is set and exists.
+/// Default triplet is `x64-windows-static-md` (static libs, dynamic CRT) to match
+/// Rust's default MSVC CRT linkage. Override with `VCPKG_DEFAULT_TRIPLET` env var.
+fn get_vcpkg_config() -> Option<(PathBuf, String)> {
+    let vcpkg_root = PathBuf::from(env::var("VCPKG_ROOT").ok()?);
+    if !vcpkg_root.exists() {
+        return None;
+    }
+
+    let triplet = env::var("VCPKG_DEFAULT_TRIPLET").unwrap_or_else(|_| {
+        let arch = if cfg!(target_arch = "x86_64") {
+            "x64"
+        } else {
+            "x86"
+        };
+        format!("{arch}-windows-static-md")
+    });
+
+    Some((vcpkg_root, triplet))
+}
+
+/// Search the vcpkg lib directory for a library whose name contains `base_name`
+/// (case-insensitive). Returns the stem (filename without `.lib`) if found.
+/// This handles vcpkg's CRT-suffix naming, e.g. `libexpatMD.lib` for the
+/// `x64-windows-static-md` triplet.
+fn find_vcpkg_lib(base_name: &str) -> Option<String> {
+    let (vcpkg_root, triplet) = get_vcpkg_config()?;
+    let lib_dir = vcpkg_root.join("installed").join(&triplet).join("lib");
+    let lower = base_name.to_lowercase();
+    for entry in std::fs::read_dir(&lib_dir).ok()? {
+        let entry = entry.ok()?;
+        let fname = entry.file_name();
+        let name = fname.to_string_lossy();
+        if name.to_lowercase().contains(&lower) && name.ends_with(".lib") {
+            return Some(name.trim_end_matches(".lib").to_string());
+        }
+    }
+    None
+}
+
+/// Apply platform-appropriate C++ compiler flags to a cc::Build.
+fn apply_cpp_flags(build: &mut cc::Build) {
+    if is_msvc() {
+        build
+            .flag("/std:c++17")
+            .define("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS", None)
+            .define("_CRT_SECURE_NO_WARNINGS", None);
+    } else {
+        build.flag("-std=c++17").flag("-Wno-overloaded-virtual");
+    }
+}
+
+/// Apply all `*.patch` files from `mdflib-sys/patches/` to the bundled source
+/// tree. Uses `git apply` if available, otherwise falls back to `patch -p1`.
+/// Already-applied patches are skipped, making repeated builds idempotent.
+fn apply_patches(manifest_dir: &Path, bundled_dir: &Path) {
+    let patches_dir = manifest_dir.join("patches");
+    if !patches_dir.exists() {
+        return;
+    }
+    let mut patches: Vec<_> = std::fs::read_dir(&patches_dir)
+        .expect("Failed to read patches directory")
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|ext| ext == "patch"))
+        .collect();
+    patches.sort();
+
+    for patch in &patches {
+        if try_apply_patch(bundled_dir, patch) {
+            println!(
+                "Applied patch: {}",
+                patch.file_name().unwrap().to_string_lossy()
+            );
+        }
+    }
+
+    // Rebuild if patches change
+    println!("cargo:rerun-if-changed={}", patches_dir.display());
+    for patch in &patches {
+        println!("cargo:rerun-if-changed={}", patch.display());
+    }
+}
+
+/// Try to apply a single patch file. Returns true if newly applied, false if
+/// already applied. Panics on failure.
+fn try_apply_patch(bundled_dir: &Path, patch: &Path) -> bool {
+    // Try git apply first (available when building from a git checkout)
+    if let Ok(output) = Command::new("git")
+        .current_dir(bundled_dir)
+        .args(["apply", "--check", "--reverse"])
+        .arg(patch)
+        .output()
+    {
+        if output.status.success() {
+            return false; // already applied
+        }
+        // Not yet applied — try to apply
+        let apply = Command::new("git")
+            .current_dir(bundled_dir)
+            .args(["apply"])
+            .arg(patch)
+            .output()
+            .expect("Failed to run git apply");
+        if apply.status.success() {
+            return true;
+        }
+        // git apply failed — fall through to `patch` command
+    }
+
+    // Fall back to the `patch` utility (e.g. in Docker / Alpine)
+    if let Ok(output) = Command::new("patch")
+        .current_dir(bundled_dir)
+        .args(["-p1", "--forward", "-s"])
+        .stdin(std::fs::File::open(patch).expect("Failed to open patch file"))
+        .output()
+    {
+        if output.status.success() {
+            return true;
+        }
+        // Exit code 1 with --forward means already applied
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if stderr.contains("Reversed (or previously applied)")
+            || stdout.contains("Reversed (or previously applied)")
+        {
+            return false;
+        }
+        panic!(
+            "Failed to apply patch {}:\n{}{}",
+            patch.display(),
+            stdout,
+            stderr,
+        );
+    }
+
+    panic!(
+        "Neither `git` nor `patch` found. Cannot apply {}",
+        patch.display()
     );
 }
 
@@ -48,6 +203,9 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         );
     }
 
+    // Apply patches from mdflib-sys/patches/ to the bundled source.
+    apply_patches(manifest_dir, &bundled_dir);
+
     // Configure with CMake
     let mut cmake_config = Command::new("cmake");
     cmake_config
@@ -64,15 +222,45 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
         .arg("-DCMAKE_CXX_STANDARD=17");
 
     // Platform-specific CMake settings
-    if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
-        cmake_config.arg("-G").arg("Visual Studio 16 2019");
-        if cfg!(target_arch = "x86_64") {
-            cmake_config.arg("-A").arg("x64");
-        } else if cfg!(target_arch = "x86") {
-            cmake_config.arg("-A").arg("Win32");
+    if is_msvc() {
+        // Don't hardcode a Visual Studio version — let CMake auto-detect the
+        // installed version. The -A flag is only valid for VS generators, so
+        // skip it when the user has overridden CMAKE_GENERATOR to something
+        // else (e.g. Ninja).
+        if env::var("CMAKE_GENERATOR").map_or(true, |g| g.contains("Visual Studio")) {
+            if cfg!(target_arch = "x86_64") {
+                cmake_config.arg("-A").arg("x64");
+            } else if cfg!(target_arch = "x86") {
+                cmake_config.arg("-A").arg("Win32");
+            }
+        }
+
+        // Use vcpkg toolchain if available for automatic dependency resolution
+        if let Some((vcpkg_root, triplet)) = get_vcpkg_config() {
+            let toolchain = vcpkg_root.join("scripts/buildsystems/vcpkg.cmake");
+            if toolchain.exists() {
+                cmake_config.arg(format!("-DCMAKE_TOOLCHAIN_FILE={}", toolchain.display()));
+                cmake_config.arg(format!("-DVCPKG_TARGET_TRIPLET={triplet}"));
+                // Use pre-installed packages rather than manifest mode so that
+                // the bundled vcpkg.json doesn't trigger a redundant install.
+                cmake_config.arg("-DVCPKG_MANIFEST_MODE=OFF");
+            }
         }
     } else {
         cmake_config.arg("-G").arg("Unix Makefiles");
+
+        // Pass the compilers detected by the cc crate to CMake so it uses the
+        // same toolchain — essential for musl targets where CC is musl-gcc.
+        let cc_tool = cc::Build::new().cargo_metadata(false).get_compiler();
+        let cxx_tool = cc::Build::new()
+            .cpp(true)
+            .cargo_metadata(false)
+            .get_compiler();
+        cmake_config.arg(format!("-DCMAKE_C_COMPILER={}", cc_tool.path().display()));
+        cmake_config.arg(format!(
+            "-DCMAKE_CXX_COMPILER={}",
+            cxx_tool.path().display()
+        ));
     }
 
     // Help CMake find dependencies
@@ -116,14 +304,32 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
     }
 
     // Build the C wrapper
-    cc::Build::new()
+    let mut cc_build = cc::Build::new();
+    cc_build
         .cpp(true)
         .file("src/mdf_c_wrapper.cpp")
         .include(install_dir.join("include"))
-        .include(bundled_dir.join("include"))
-        .flag("-Wno-overloaded-virtual")
-        .flag("-std=c++17")
-        .compile("mdf_c_wrapper");
+        .include(bundled_dir.join("include"));
+
+    // On Windows, mdflib's CMake installs headers to <prefix>/mdf/include/
+    let mdf_include = install_dir.join("mdf").join("include");
+    if mdf_include.exists() {
+        cc_build.include(&mdf_include);
+    }
+
+    apply_cpp_flags(&mut cc_build);
+
+    // On MSVC with vcpkg, add vcpkg include path for dependency headers
+    if is_msvc() {
+        if let Some((vcpkg_root, triplet)) = get_vcpkg_config() {
+            let vcpkg_include = vcpkg_root.join("installed").join(&triplet).join("include");
+            if vcpkg_include.exists() {
+                cc_build.include(&vcpkg_include);
+            }
+        }
+    }
+
+    cc_build.compile("mdf_c_wrapper");
 
     // Set up linking
     setup_bundled_linking(&install_dir);
@@ -131,22 +337,34 @@ fn build_bundled(out_dir: &Path, manifest_dir: &Path) {
 
 fn setup_dependencies() {
     println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
-    setup_dependency("zlib", "z");
-    setup_dependency("expat", "expat");
+    if is_msvc() {
+        // On MSVC, vcpkg library names may carry a CRT-linkage suffix.
+        // e.g. expat → libexpatMD.lib (dynamic CRT) or libexpatMT.lib (static CRT).
+        let zlib_name = find_vcpkg_lib("zlib").unwrap_or_else(|| "zlib".to_string());
+        let expat_name = find_vcpkg_lib("expat").unwrap_or_else(|| "libexpat".to_string());
+        setup_dependency("zlib", &zlib_name);
+        setup_dependency("expat", &expat_name);
+    } else {
+        setup_dependency("zlib", "z");
+        setup_dependency("expat", "expat");
+    }
 }
 
 fn setup_dependency(name: &str, fallback_name: &str) {
+    // Add /usr/lib/${target} to default dirs
+    let default_lib_dirs = if let Ok(target) = env::var("TARGET") {
+        let mut dirs = vec![format!("/usr/lib/{target}")];
+        dirs.extend(DEFAULT_LIB_DIRS.iter().map(|s| s.to_string()));
+        dirs
+    } else {
+        DEFAULT_LIB_DIRS.iter().map(|s| s.to_string()).collect()
+    };
     let upper_name = name.to_uppercase();
     println!("cargo:rerun-if-env-changed={upper_name}_LIBRARY");
     println!("cargo:rerun-if-env-changed={upper_name}_INCLUDE_DIR");
+    println!("cargo:rerun-if-env-changed={upper_name}_NO_PKG_CONFIG");
 
-    // Try pkg-config first
-    if pkg_config::probe_library(name).is_ok() {
-        println!("Found {name} via pkg-config");
-        return;
-    }
-
-    // Then try environment variables
+    // Explicit environment variable path — always preferred
     if let Ok(lib_path_str) = env::var(format!("{upper_name}_LIBRARY")) {
         println!("Found {name} via {upper_name}_LIBRARY environment variable");
         let lib_path = PathBuf::from(&lib_path_str);
@@ -161,7 +379,33 @@ fn setup_dependency(name: &str, fallback_name: &str) {
         return;
     }
 
-    // Finally, fallback to default system linking
+    // Try pkg-config to find library search paths, then prefer static (.a) but fall back to dynamic (.so) if the static archive doesn't exist.
+    let mut pkg = pkg_config::Config::new();
+    pkg.statik(true);
+
+    if let Ok(lib) = pkg.probe(name) {
+        println!("Found {name} via pkg-config");
+        for dir in &lib.link_paths {
+            println!("cargo:rustc-link-search=native={}", dir.display());
+        }
+        // Check pkg-config paths and default system dirs for a static archive
+        let static_name = format!("lib{fallback_name}.a");
+        let search_dirs: Vec<&Path> = lib
+            .link_paths
+            .iter()
+            .map(|p| p.as_path())
+            .chain(default_lib_dirs.iter().map(Path::new))
+            .collect();
+        let has_static = search_dirs.iter().any(|d| d.join(&static_name).exists());
+        if has_static {
+            println!("cargo:rustc-link-lib=static={fallback_name}");
+        } else {
+            println!("cargo:rustc-link-lib=dylib={fallback_name}");
+        }
+        return;
+    }
+
+    // Fallback to default system linking (dylib — let the linker decide)
     println!(
         "cargo:warning={name} not found via pkg-config or environment variables, using system defaults"
     );
@@ -209,16 +453,108 @@ fn add_platform_dependency_hints(cmake_config: &mut Command) {
             cmake_config.arg("-DEXPAT_ROOT=/usr");
         }
     } else if cfg!(target_os = "linux") {
-        // Arch Linux typically has zlib and expat in /usr/include and /usr/lib, so we can hint CMake to look there
-        if Path::new("/usr/include/zlib.h").exists() {
-            cmake_config.arg("-DZLIB_ROOT=/usr");
+        if is_musl() {
+            // For musl builds, we must NOT set ZLIB_ROOT=/usr or EXPAT_ROOT=/usr
+            // because that causes CMake to add -I/usr/include to the compiler
+            // flags, which pulls in glibc headers (e.g. features-time64.h →
+            // bits/wordsize.h) that don't exist in the musl sysroot and conflict
+            // with the musl-g++ wrapper's carefully crafted -isystem paths.
+            //
+            // Instead, set explicit INCLUDE_DIR and LIBRARY paths so CMake never
+            // adds /usr/include to the search path.
+            let search_dirs = musl_lib_search_dirs();
+            if let Some(inc) = musl_include_dir() {
+                cmake_config.arg(format!("-DZLIB_INCLUDE_DIR={inc}"));
+                cmake_config.arg(format!("-DEXPAT_INCLUDE_DIR={inc}"));
+            }
+            for lib_dir in &search_dirs {
+                let zlib = format!("{lib_dir}/libz.a");
+                if Path::new(&zlib).exists() {
+                    cmake_config.arg(format!("-DZLIB_LIBRARY={zlib}"));
+                    break;
+                }
+            }
+            for lib_dir in &search_dirs {
+                let expat = format!("{lib_dir}/libexpat.a");
+                if Path::new(&expat).exists() {
+                    cmake_config.arg(format!("-DEXPAT_LIBRARY={expat}"));
+                    break;
+                }
+            }
+        } else {
+            // Arch linux and some other distros put zlib and expat in /usr/
+            if Path::new("/usr/include/zlib.h").exists() {
+                cmake_config.arg("-DZLIB_ROOT=/usr");
+            }
+            if Path::new("/usr/include/expat.h").exists() {
+                cmake_config.arg("-DEXPAT_ROOT=/usr");
+            }
+            if Path::new("/usr/lib/libexpat.a").exists() {
+                cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.a");
+            } else if Path::new("/usr/lib/libexpat.so").exists() {
+                cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.so");
+            }
+            if Path::new("/usr/lib/libz.a").exists() {
+                cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.a");
+            } else if Path::new("/usr/lib/libz.so").exists() {
+                cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.so");
+            }
         }
-        if Path::new("/usr/include/expat.h").exists() {
-            cmake_config.arg("-DEXPAT_ROOT=/usr");
+    }
+}
+
+/// Return candidate library directories for musl targets, ordered by preference.
+fn musl_lib_search_dirs() -> Vec<String> {
+    let mut dirs = Vec::new();
+    // Architecture-specific musl sysroot (e.g. /usr/lib/x86_64-linux-musl)
+    if let Ok(target) = env::var("TARGET") {
+        if let Some(arch) = target.split('-').next() {
+            let musl_dir = format!("/usr/lib/{arch}-linux-musl");
+            if Path::new(&musl_dir).exists() {
+                dirs.push(musl_dir);
+            }
         }
-        if Path::new("/usr/lib").exists() {
-            cmake_config.arg("-DEXPAT_LIBRARY=/usr/lib/libexpat.so");
-            cmake_config.arg("-DZLIB_LIBRARY=/usr/lib/libz.so");
+    }
+    // GNU multiarch dir (static .a files from -dev packages work with musl)
+    for dir in &["/usr/lib/x86_64-linux-gnu", "/usr/lib"] {
+        if Path::new(dir).exists() {
+            dirs.push(dir.to_string());
+        }
+    }
+    dirs
+}
+
+/// Return the musl include directory (e.g. /usr/include/x86_64-linux-musl)
+/// where library headers (zlib.h, expat.h) should be found without pulling in
+/// glibc system headers from /usr/include.
+fn musl_include_dir() -> Option<String> {
+    if let Ok(target) = env::var("TARGET") {
+        if let Some(arch) = target.split('-').next() {
+            let musl_dir = format!("/usr/include/{arch}-linux-musl");
+            if Path::new(&musl_dir).exists() {
+                return Some(musl_dir);
+            }
+        }
+    }
+    None
+}
+
+/// Add the GCC library directory to the linker search path so that
+/// `libstdc++.a` (and `libgcc.a` / `libgcc_eh.a`) can be found when
+/// statically linking C++ code on musl targets.
+fn add_gcc_lib_search_path() {
+    if let Ok(output) = Command::new("g++")
+        .arg("-print-file-name=libstdc++.a")
+        .output()
+    {
+        if output.status.success() {
+            let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            let path = Path::new(&path_str);
+            if path.is_absolute() {
+                if let Some(dir) = path.parent() {
+                    println!("cargo:rustc-link-search=native={}", dir.display());
+                }
+            }
         }
     }
 }
@@ -235,6 +571,24 @@ fn setup_bundled_linking(install_dir: &Path) {
         );
     }
 
+    // On Windows, mdflib's CMake installs to <prefix>/mdf/lib/ rather than
+    // <prefix>/lib/. Add that path so the linker can find mdf.lib.
+    let mdf_lib_dir = install_dir.join("mdf").join("lib");
+    if mdf_lib_dir.exists() {
+        println!("cargo:rustc-link-search=native={}", mdf_lib_dir.display());
+    }
+
+    // On Windows with vcpkg, add vcpkg lib directory so the linker can find
+    // zlib.lib / libexpat.lib that were installed by vcpkg.
+    if is_msvc() {
+        if let Some((vcpkg_root, triplet)) = get_vcpkg_config() {
+            let vcpkg_lib = vcpkg_root.join("installed").join(&triplet).join("lib");
+            if vcpkg_lib.exists() {
+                println!("cargo:rustc-link-search=native={}", vcpkg_lib.display());
+            }
+        }
+    }
+
     // Link the static libraries in the correct order
     println!("cargo:rustc-link-lib=static=mdf_c_wrapper");
     println!("cargo:rustc-link-lib=static=mdf");
@@ -247,14 +601,27 @@ fn setup_bundled_linking(install_dir: &Path) {
         println!("cargo:rustc-link-lib=dylib=user32");
         println!("cargo:rustc-link-lib=dylib=kernel32");
         println!("cargo:rustc-link-lib=dylib=ws2_32");
-        println!("cargo:rustc-link-lib=dylib=advapi2");
+        println!("cargo:rustc-link-lib=dylib=advapi32");
         println!("cargo:rustc-link-lib=dylib=shell32");
         println!("cargo:rustc-link-lib=dylib=ole32");
     } else if cfg!(target_os = "linux") {
-        println!("cargo:rustc-link-lib=dylib=stdc++");
-        println!("cargo:rustc-link-lib=dylib=m");
-        println!("cargo:rustc-link-lib=dylib=pthread");
-        println!("cargo:rustc-link-lib=dylib=dl");
+        if is_musl() {
+            // For musl, link stdc++ statically for a self-contained binary.
+            // m, pthread, and dl are part of musl's libc — no separate linking.
+            println!("cargo:rustc-link-lib=static=stdc++");
+            // Add the musl sysroot lib dir so the linker finds static .a files
+            for dir in musl_lib_search_dirs() {
+                println!("cargo:rustc-link-search=native={dir}");
+            }
+            // The musl-gcc specs may omit the GCC lib directory where
+            // libstdc++.a lives. Ask g++ for the path and add it explicitly.
+            add_gcc_lib_search_path();
+        } else {
+            println!("cargo:rustc-link-lib=dylib=stdc++");
+            println!("cargo:rustc-link-lib=dylib=m");
+            println!("cargo:rustc-link-lib=dylib=pthread");
+            println!("cargo:rustc-link-lib=dylib=dl");
+        }
     } else if cfg!(target_os = "macos") {
         println!("cargo:rustc-link-lib=dylib=c++");
         println!("cargo:rustc-link-lib=dylib=System");
@@ -264,11 +631,8 @@ fn setup_bundled_linking(install_dir: &Path) {
 
 fn setup_system_linking(_manifest_dir: &Path) {
     let mut cc_build = cc::Build::new();
-    cc_build
-        .cpp(true)
-        .file("src/mdf_c_wrapper.cpp")
-        .flag("-Wno-overloaded-virtual")
-        .flag("-std=c++17");
+    cc_build.cpp(true).file("src/mdf_c_wrapper.cpp");
+    apply_cpp_flags(&mut cc_build);
 
     // Try to find system-installed mdflib using pkg-config
     if let Ok(library) = pkg_config::Config::new()
@@ -286,10 +650,18 @@ fn setup_system_linking(_manifest_dir: &Path) {
         setup_dependencies();
 
         if cfg!(target_os = "linux") {
-            println!("cargo:rustc-link-lib=dylib=stdc++");
-            println!("cargo:rustc-link-lib=dylib=m");
-            println!("cargo:rustc-link-lib=dylib=pthread");
-            println!("cargo:rustc-link-lib=dylib=dl");
+            if is_musl() {
+                println!("cargo:rustc-link-lib=static=stdc++");
+                for dir in musl_lib_search_dirs() {
+                    println!("cargo:rustc-link-search=native={dir}");
+                }
+                add_gcc_lib_search_path();
+            } else {
+                println!("cargo:rustc-link-lib=dylib=stdc++");
+                println!("cargo:rustc-link-lib=dylib=m");
+                println!("cargo:rustc-link-lib=dylib=pthread");
+                println!("cargo:rustc-link-lib=dylib=dl");
+            }
             cc_build.include("/usr/local/include");
             cc_build.include("/usr/include");
         } else if cfg!(target_os = "macos") {
@@ -299,14 +671,25 @@ fn setup_system_linking(_manifest_dir: &Path) {
             cc_build.include("/usr/local/include");
             cc_build.include("/opt/homebrew/include");
         } else if cfg!(target_os = "windows") {
-            println!("cargo:rustc-link-lib=dylib=stdc++");
             println!("cargo:rustc-link-lib=dylib=user32");
             println!("cargo:rustc-link-lib=dylib=kernel32");
             println!("cargo:rustc-link-lib=dylib=ws2_32");
-            println!("cargo:rustc-link-lib=dylib=advapi2");
+            println!("cargo:rustc-link-lib=dylib=advapi32");
             println!("cargo:rustc-link-lib=dylib=shell32");
             println!("cargo:rustc-link-lib=dylib=ole32");
             cc_build.include("C:/Program Files/mdflib/include");
+
+            // Add vcpkg include/lib paths if available
+            if let Some((vcpkg_root, triplet)) = get_vcpkg_config() {
+                let vcpkg_include = vcpkg_root.join("installed").join(&triplet).join("include");
+                let vcpkg_lib = vcpkg_root.join("installed").join(&triplet).join("lib");
+                if vcpkg_include.exists() {
+                    cc_build.include(&vcpkg_include);
+                }
+                if vcpkg_lib.exists() {
+                    println!("cargo:rustc-link-search=native={}", vcpkg_lib.display());
+                }
+            }
         }
     }
 
