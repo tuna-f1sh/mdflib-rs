@@ -880,8 +880,8 @@ EXPORT IChannelConversion *ChannelCreateChannelConversion(IChannel *channel) {
   return channel ? channel->CreateChannelConversion() : nullptr;
 }
 
-EXPORT const IChannelArray *ChannelGetChannelArray(const IChannel *channel) {
-  return channel ? channel->ChannelArray() : nullptr;
+EXPORT const IChannelArray *ChannelGetChannelArray(const IChannel *channel, size_t index) {
+  return channel ? channel->ChannelArray(index) : nullptr;
 }
 
 EXPORT IChannelArray *ChannelCreateChannelArray(IChannel *channel) {

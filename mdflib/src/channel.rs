@@ -169,7 +169,7 @@ impl<'a> ChannelRef<'a> {
     /// Gets the channel array of the channel.
     pub fn get_channel_array(&self) -> Option<ChannelArrayRef<'_>> {
         unsafe {
-            let array = ffi::ChannelGetChannelArray(self.inner);
+            let array = ffi::ChannelGetChannelArray(self.inner, 0);
             if array.is_null() {
                 None
             } else {

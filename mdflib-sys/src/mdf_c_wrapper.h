@@ -550,7 +550,7 @@ EXPORT const ISourceInformation* ChannelGetSourceInformation(const IChannel* cha
 EXPORT ISourceInformation* ChannelCreateSourceInformation(IChannel* channel);
 EXPORT const IChannelConversion* ChannelGetChannelConversion(const IChannel* channel);
 EXPORT IChannelConversion* ChannelCreateChannelConversion(IChannel* channel);
-EXPORT const IChannelArray* ChannelGetChannelArray(const IChannel* channel);
+EXPORT const IChannelArray* ChannelGetChannelArray(const IChannel* channel, size_t index);
 EXPORT IChannelArray* ChannelCreateChannelArray(IChannel* channel);
 
 // IHeader functions
