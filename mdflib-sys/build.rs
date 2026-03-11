@@ -2,6 +2,10 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Default library directories to check for static archives when pkg-config
+/// doesn't report any `-L` paths (i.e. the libs are in the system default).
+const DEFAULT_LIB_DIRS: &[&str] = &["/usr/lib", "/usr/lib64"];
+
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
@@ -109,7 +113,7 @@ fn apply_patches(manifest_dir: &Path, bundled_dir: &Path) {
     for patch in &patches {
         if try_apply_patch(bundled_dir, patch) {
             println!(
-                "cargo:warning=Applied patch: {}",
+                "Applied patch: {}",
                 patch.file_name().unwrap().to_string_lossy()
             );
         }
@@ -347,22 +351,20 @@ fn setup_dependencies() {
 }
 
 fn setup_dependency(name: &str, fallback_name: &str) {
+    // Add /usr/lib/${target} to default dirs
+    let default_lib_dirs = if let Ok(target) = env::var("TARGET") {
+        let mut dirs = vec![format!("/usr/lib/{target}")];
+        dirs.extend(DEFAULT_LIB_DIRS.iter().map(|s| s.to_string()));
+        dirs
+    } else {
+        DEFAULT_LIB_DIRS.iter().map(|s| s.to_string()).collect()
+    };
     let upper_name = name.to_uppercase();
     println!("cargo:rerun-if-env-changed={upper_name}_LIBRARY");
     println!("cargo:rerun-if-env-changed={upper_name}_INCLUDE_DIR");
+    println!("cargo:rerun-if-env-changed={upper_name}_NO_PKG_CONFIG");
 
-    // Try to static link
-    let static_prefix = "static=";
-
-    let mut pkg = pkg_config::Config::new();
-    pkg.statik(true);
-
-    if pkg.probe(name).is_ok() {
-        println!("Found {name} via pkg-config");
-        return;
-    }
-
-    // Then try environment variables
+    // Explicit environment variable path — always preferred
     if let Ok(lib_path_str) = env::var(format!("{upper_name}_LIBRARY")) {
         println!("Found {name} via {upper_name}_LIBRARY environment variable");
         let lib_path = PathBuf::from(&lib_path_str);
@@ -372,16 +374,42 @@ fn setup_dependency(name: &str, fallback_name: &str) {
         if let Some(lib_name) = lib_path.file_stem() {
             let lib_name_str = lib_name.to_string_lossy();
             let clean_name = lib_name_str.strip_prefix("lib").unwrap_or(&lib_name_str);
-            println!("cargo:rustc-link-lib={static_prefix}{clean_name}");
+            println!("cargo:rustc-link-lib={clean_name}");
         }
         return;
     }
 
-    // Finally, fallback to default system linking
+    // Try pkg-config to find library search paths, then prefer static (.a) but fall back to dynamic (.so) if the static archive doesn't exist.
+    let mut pkg = pkg_config::Config::new();
+    pkg.statik(true);
+
+    if let Ok(lib) = pkg.probe(name) {
+        println!("Found {name} via pkg-config");
+        for dir in &lib.link_paths {
+            println!("cargo:rustc-link-search=native={}", dir.display());
+        }
+        // Check pkg-config paths and default system dirs for a static archive
+        let static_name = format!("lib{fallback_name}.a");
+        let search_dirs: Vec<&Path> = lib
+            .link_paths
+            .iter()
+            .map(|p| p.as_path())
+            .chain(default_lib_dirs.iter().map(Path::new))
+            .collect();
+        let has_static = search_dirs.iter().any(|d| d.join(&static_name).exists());
+        if has_static {
+            println!("cargo:rustc-link-lib=static={fallback_name}");
+        } else {
+            println!("cargo:rustc-link-lib=dylib={fallback_name}");
+        }
+        return;
+    }
+
+    // Fallback to default system linking (dylib — let the linker decide)
     println!(
         "cargo:warning={name} not found via pkg-config or environment variables, using system defaults"
     );
-    println!("cargo:rustc-link-lib={static_prefix}{fallback_name}");
+    println!("cargo:rustc-link-lib={fallback_name}");
 }
 
 fn add_dependency_hints(cmake_config: &mut Command) {
