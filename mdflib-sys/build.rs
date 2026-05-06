@@ -63,13 +63,29 @@ fn get_vcpkg_config() -> Option<(PathBuf, String)> {
     Some((vcpkg_root, triplet))
 }
 
-/// Search the vcpkg lib directory for a library whose name contains `base_name`
-/// (case-insensitive). Returns the stem (filename without `.lib`) if found.
-/// This handles vcpkg's CRT-suffix naming, e.g. `libexpatMD.lib` for the
-/// `x64-windows-static-md` triplet.
+/// Search the vcpkg lib directory for a library matching `base_name`.
+/// Checks for exact known names first, then falls back to substring matching.
+/// This handles vcpkg's varying naming conventions across versions and triplets
+/// (e.g. `zlib.lib`, `z.lib`, `libexpatMD.lib`).
 fn find_vcpkg_lib(base_name: &str) -> Option<String> {
     let (vcpkg_root, triplet) = get_vcpkg_config()?;
     let lib_dir = vcpkg_root.join("installed").join(&triplet).join("lib");
+
+    // Known vcpkg library names for each base_name
+    let candidates: &[&str] = match base_name {
+        "zlib" => &["zlib.lib", "z.lib", "zlibstatic.lib", "zlibd.lib"],
+        "expat" => &["libexpat.lib", "expat.lib", "libexpatMD.lib", "libexpatMT.lib", "expatMD.lib"],
+        _ => &[],
+    };
+
+    // Check known candidates first (exact match)
+    for candidate in candidates {
+        if lib_dir.join(candidate).exists() {
+            return Some(candidate.trim_end_matches(".lib").to_string());
+        }
+    }
+
+    // Fall back to substring search
     let lower = base_name.to_lowercase();
     for entry in std::fs::read_dir(&lib_dir).ok()? {
         let entry = entry.ok()?;
