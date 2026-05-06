@@ -73,8 +73,14 @@ fn find_vcpkg_lib(base_name: &str) -> Option<String> {
 
     // Known vcpkg library names for each base_name
     let candidates: &[&str] = match base_name {
-        "zlib" => &["zlib.lib", "z.lib", "zlibstatic.lib", "zlibd.lib"],
-        "expat" => &["libexpat.lib", "expat.lib", "libexpatMD.lib", "libexpatMT.lib", "expatMD.lib"],
+        "zlib" => &["zlib.lib", "zs.lib", "z.lib", "zlibstatic.lib", "zlibd.lib"],
+        "expat" => &[
+            "libexpat.lib",
+            "expat.lib",
+            "libexpatMD.lib",
+            "libexpatMT.lib",
+            "expatMD.lib",
+        ],
         _ => &[],
     };
 
