@@ -1,6 +1,6 @@
 [package]
 name = "mdflib"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Rust bindings for mdflib"
 license = "MIT OR Apache-2.0"
